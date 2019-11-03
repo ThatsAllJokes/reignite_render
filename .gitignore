@@ -36,5 +36,5 @@
 
 # directories
 bin/Debug-x64
-bin/int
+bin-int/Debug-x64
 project/.vs

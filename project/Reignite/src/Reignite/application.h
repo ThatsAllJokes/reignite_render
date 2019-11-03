@@ -8,10 +8,12 @@ namespace Reignite {
   class REIGNITE_API Application {
    public:
 
+    void Run();
+
+   protected:
+
     Application();
     virtual ~Application();
-
-    void Run();
   };
 
   // To be defined in client

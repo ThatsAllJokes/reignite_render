@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _ENTRY_POINT_
+#define _ENTRY_POINT_ 1
 
 #ifdef RI_PLATFORM_WINDOWS
 
@@ -6,9 +7,9 @@ extern Reignite::Application* Reignite::CreateApplication();
 
 int main(int argc, char** argv) {
 
-  auto app = Reignite::CreateApplication();
-  app->Run();
-  delete app;
+  Reignite::CreateApplication()->Run();
 }
 
-#endif
+#endif // RI_PLATFORM_WINDOWS
+
+#endif // _ENTRY_POINT_
