@@ -27,12 +27,18 @@
     <ClInclude Include="src\Reignite\log.h">
       <Filter>src\Reignite</Filter>
     </ClInclude>
+    <ClInclude Include="src\Reignite\timer.h">
+      <Filter>src\Reignite</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Reignite\application.cpp">
       <Filter>src\Reignite</Filter>
     </ClCompile>
     <ClCompile Include="src\Reignite\log.cpp">
+      <Filter>src\Reignite</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Reignite\timer.cpp">
       <Filter>src\Reignite</Filter>
     </ClCompile>
   </ItemGroup>

@@ -15,9 +15,9 @@ namespace Reignite {
 
     inline static std::shared_ptr<spdlog::logger>& GetLogger() { return s_logger; }
 
-    private:
+   private:
 
-     static std::shared_ptr<spdlog::logger> s_logger;
+    static std::shared_ptr<spdlog::logger> s_logger;
   };
 }
 

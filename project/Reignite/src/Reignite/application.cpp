@@ -1,19 +1,17 @@
 #include "application.h"
 
-namespace Reignite {
 
-  Application::Application() {
+Reignite::Application::Application() { }
 
-  }
+Reignite::Application::~Application() { }
 
-  Application::~Application() {
+void Reignite::Application::Run() {
 
-  }
-
-  void Application::Run() {
-
-    while (true);
-  }
+  Init();
+  while (true);
 }
+
+void Reignite::Application::Init() { }
+
 
 

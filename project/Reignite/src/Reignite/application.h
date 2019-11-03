@@ -10,6 +10,10 @@ namespace Reignite {
 
     void Run();
 
+   private:
+
+    void Init();
+
    protected:
 
     Application();
