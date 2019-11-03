@@ -1,5 +1,5 @@
-#ifndef _APPLICATION_H_
-#define _APPLICATION_H_ 1
+#ifndef _RI_APPLICATION_H_
+#define _RI_APPLICATION_H_ 1
 
 #include "core.h"
 
@@ -20,5 +20,5 @@ namespace Reignite {
   Application* CreateApplication();
 }
 
-#endif // _APPLICATION_H_
+#endif // _RI_APPLICATION_H_
 

@@ -1,5 +1,5 @@
-#ifndef _ENTRY_POINT_
-#define _ENTRY_POINT_ 1
+#ifndef _RI_ENTRY_POINT_
+#define _RI_ENTRY_POINT_ 1
 
 #ifdef RI_PLATFORM_WINDOWS
 
@@ -7,9 +7,12 @@ extern Reignite::Application* Reignite::CreateApplication();
 
 int main(int argc, char** argv) {
 
+  Reignite::Log::Init();
+  RI_INFO("Hello");
+
   Reignite::CreateApplication()->Run();
 }
 
 #endif // RI_PLATFORM_WINDOWS
 
-#endif // _ENTRY_POINT_
+#endif // _RI_ENTRY_POINT_

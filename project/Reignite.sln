@@ -1,11 +1,12 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.28307.902
-MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Render", "Render\Render.vcxproj", "{DE27ECC3-DE36-43DB-A1DA-10394DA1D193}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Render", "Render\Render.vcxproj", "{C5BB87CE-B15D-B2A4-9A18-C6F8865939F5}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DC17F783-C8E4-518F-F1FD-3F37DD29871D} = {DC17F783-C8E4-518F-F1FD-3F37DD29871D}
+	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Reignite", "Reignite\Reignite.vcxproj", "{C1F21AC7-C1A6-4A96-80E7-634DCAB7192A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Reignite", "Reignite\Reignite.vcxproj", "{DC17F783-C8E4-518F-F1FD-3F37DD29871D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,19 +14,18 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{C1F21AC7-C1A6-4A96-80E7-634DCAB7192A}.Debug|x64.ActiveCfg = Debug|x64
-		{C1F21AC7-C1A6-4A96-80E7-634DCAB7192A}.Debug|x64.Build.0 = Debug|x64
-		{C1F21AC7-C1A6-4A96-80E7-634DCAB7192A}.Release|x64.ActiveCfg = Release|x64
-		{C1F21AC7-C1A6-4A96-80E7-634DCAB7192A}.Release|x64.Build.0 = Release|x64
-		{DE27ECC3-DE36-43DB-A1DA-10394DA1D193}.Debug|x64.ActiveCfg = Debug|x64
-		{DE27ECC3-DE36-43DB-A1DA-10394DA1D193}.Debug|x64.Build.0 = Debug|x64
-		{DE27ECC3-DE36-43DB-A1DA-10394DA1D193}.Release|x64.ActiveCfg = Release|x64
-		{DE27ECC3-DE36-43DB-A1DA-10394DA1D193}.Release|x64.Build.0 = Release|x64
+		{C5BB87CE-B15D-B2A4-9A18-C6F8865939F5}.Debug|x64.ActiveCfg = Debug|x64
+		{C5BB87CE-B15D-B2A4-9A18-C6F8865939F5}.Debug|x64.Build.0 = Debug|x64
+		{C5BB87CE-B15D-B2A4-9A18-C6F8865939F5}.Release|x64.ActiveCfg = Release|x64
+		{C5BB87CE-B15D-B2A4-9A18-C6F8865939F5}.Release|x64.Build.0 = Release|x64
+		{DC17F783-C8E4-518F-F1FD-3F37DD29871D}.Debug|x64.ActiveCfg = Debug|x64
+		{DC17F783-C8E4-518F-F1FD-3F37DD29871D}.Debug|x64.Build.0 = Debug|x64
+		{DC17F783-C8E4-518F-F1FD-3F37DD29871D}.Release|x64.ActiveCfg = Release|x64
+		{DC17F783-C8E4-518F-F1FD-3F37DD29871D}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {5EBDD336-0BFD-490A-9ACB-AE580FF408C0}
+	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection
 EndGlobal

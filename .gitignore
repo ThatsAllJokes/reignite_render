@@ -32,9 +32,12 @@
 *.app
 
 # project files
+*.vcxproj
+*.filters
 *.user
+*.sln
 
 # directories
-bin/Debug-x64
-bin-int/Debug-x64
+bin
+bin-int
 project/.vs
