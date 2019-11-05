@@ -67,11 +67,9 @@
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
+      <PrecompiledHeader></PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <DebugInformationFormat>
-      </DebugInformationFormat>
+      <DebugInformationFormat></DebugInformationFormat>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
     </ClCompile>
     <ResourceCompile>
@@ -98,11 +96,9 @@
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
+      <PrecompiledHeader></PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <DebugInformationFormat>
-      </DebugInformationFormat>
+      <DebugInformationFormat></DebugInformationFormat>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
     </ClCompile>
     <ResourceCompile>
@@ -132,7 +128,8 @@
     </ClCompile>
     <ClCompile Include="src\Reignite\log.cpp">
     </ClCompile>
-    <ClCompile Include="src\Reignite\timer.cpp" />
+    <ClCompile Include="src\Reignite\timer.cpp">
+    </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
