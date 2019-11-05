@@ -21,7 +21,12 @@ project "Reignite"
   }
 
   includedirs {
-    "extern/spdlog/include"
+    "extern/spdlog/include",
+    "extern/glfw/include"
+  }
+
+  links {
+    "GLFW"
   }
 
   configuration "Debug"
@@ -84,7 +89,6 @@ project "Reignite"
       }
 
     configuration { }
-    
 
     configuration "configurations:Release" 
     
@@ -97,3 +101,64 @@ project "Reignite"
       }
 
     configuration { }
+
+-- //////////////////////////////////////////////////////////////////////////////
+-- // Side Projects /////////////////////////////////////////////////////////////
+-- //////////////////////////////////////////////////////////////////////////////
+
+project "GLFW"
+location "project/GLFW"
+  kind "StaticLib"
+  language "C"
+
+  files {
+    "extern/glfw/include/GLFW/glfw3.h",
+    "extern/glfw/include/GLFW/glfw3native.h",
+    "extern/glfw/src/glfw_config.h",
+    "extern/glfw/src/context.c",
+    "extern/glfw/src/init.c",
+    "extern/glfw/src/input.c",
+    "extern/glfw/src/monitor.c",
+    "extern/glfw/src/vulkan.c",
+    "extern/glfw/src/window.c"
+  } 
+
+  files {
+    "extern/glfw/src/win32_init.c",
+    "extern/glfw/src/win32_joystick.c",
+    "extern/glfw/src/win32_monitor.c",
+    "extern/glfw/src/win32_time.c",
+    "extern/glfw/src/win32_thread.c",
+    "extern/glfw/src/win32_window.c",
+    "extern/glfw/src/wgl_context.c",
+    "extern/glfw/src/egl_context.c",
+    "extern/glfw/src/osmesa_context.c"
+  }
+
+  configuration "Debug"
+    
+    targetdir ("bin/Debug/x64/GLFW")
+    objdir ("bin-int/Debug/x64/GLFW")
+
+    defines  { 
+      "RI_DEBUG",
+      "RI_PLATFORM_WINDOWS",
+      "_GLFW_WIN32",
+      "_CRT_SECURE_NO_WARNINGS"
+    }
+
+  configuration { }
+
+  configuration "Release"
+    
+    targetdir ("bin/Release/x64/GLFW")
+    objdir ("bin-int/Release/x64/GLFW")
+
+    defines  { 
+      "RI_RELEASE",
+      "RI_PLATFORM_WINDOWS",
+      "_GLFW_WIN32",
+      "_CRT_SECURE_NO_WARNINGS"
+    }
+
+  configuration { }

@@ -60,7 +60,7 @@
     <ClCompile>
       <AdditionalOptions>  %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\extern\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\extern\spdlog\include;..\..\extern\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>RI_PLATFORM_WINDOWS;RI_BUILD_DLL;RI_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -74,7 +74,7 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>RI_PLATFORM_WINDOWS;RI_BUILD_DLL;RI_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\extern\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\extern\spdlog\include;..\..\extern\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -89,7 +89,7 @@
     <ClCompile>
       <AdditionalOptions>  %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\..\extern\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\extern\spdlog\include;..\..\extern\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>RI_PLATFORM_WINDOWS;RI_BUILD_DLL;RI_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -103,7 +103,7 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>RI_PLATFORM_WINDOWS;RI_BUILD_DLL;RI_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\extern\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\extern\spdlog\include;..\..\extern\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -122,6 +122,7 @@
     <ClInclude Include="src\Reignite\entry_point.h" />
     <ClInclude Include="src\Reignite\log.h" />
     <ClInclude Include="src\Reignite\timer.h" />
+    <ClInclude Include="src\Reignite\window.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Reignite\application.cpp">
@@ -130,6 +131,13 @@
     </ClCompile>
     <ClCompile Include="src\Reignite\timer.cpp">
     </ClCompile>
+    <ClCompile Include="src\Reignite\window.cpp">
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GLFW\GLFW.vcxproj">
+      <Project>{154B857C-0182-860D-AA6E-6C109684020F}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

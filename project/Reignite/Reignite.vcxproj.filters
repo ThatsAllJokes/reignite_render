@@ -30,6 +30,9 @@
     <ClInclude Include="src\Reignite\timer.h">
       <Filter>src\Reignite</Filter>
     </ClInclude>
+    <ClInclude Include="src\Reignite\window.h">
+      <Filter>src\Reignite</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Reignite\application.cpp">
@@ -39,6 +42,9 @@
       <Filter>src\Reignite</Filter>
     </ClCompile>
     <ClCompile Include="src\Reignite\timer.cpp">
+      <Filter>src\Reignite</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Reignite\window.cpp">
       <Filter>src\Reignite</Filter>
     </ClCompile>
   </ItemGroup>

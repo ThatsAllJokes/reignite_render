@@ -7,6 +7,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Render", "Render\Render.vcx
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Reignite", "Reignite\Reignite.vcxproj", "{DC17F783-C8E4-518F-F1FD-3F37DD29871D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{154B857C-0182-860D-AA6E-6C109684020F} = {154B857C-0182-860D-AA6E-6C109684020F}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GLFW", "GLFW\GLFW.vcxproj", "{154B857C-0182-860D-AA6E-6C109684020F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -22,6 +27,10 @@ Global
 		{DC17F783-C8E4-518F-F1FD-3F37DD29871D}.Debug|x64.Build.0 = Debug|x64
 		{DC17F783-C8E4-518F-F1FD-3F37DD29871D}.Release|x64.ActiveCfg = Release|x64
 		{DC17F783-C8E4-518F-F1FD-3F37DD29871D}.Release|x64.Build.0 = Release|x64
+		{154B857C-0182-860D-AA6E-6C109684020F}.Debug|x64.ActiveCfg = Debug|x64
+		{154B857C-0182-860D-AA6E-6C109684020F}.Debug|x64.Build.0 = Debug|x64
+		{154B857C-0182-860D-AA6E-6C109684020F}.Release|x64.ActiveCfg = Release|x64
+		{154B857C-0182-860D-AA6E-6C109684020F}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

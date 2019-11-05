@@ -1,17 +1,21 @@
 #include "application.h"
 
 
-Reignite::Application::Application() { }
+Reignite::Application::Application() {
+  
+  window = std::unique_ptr<Window>(Window::Create());
+}
 
 Reignite::Application::~Application() { }
 
 void Reignite::Application::Run() {
 
-  Init();
-  while (true);
+  while (is_running) {
+
+    window->update();
+  }
 }
 
-void Reignite::Application::Init() { }
 
 
 
