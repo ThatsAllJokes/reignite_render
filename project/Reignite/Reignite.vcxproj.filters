@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="extern">
+      <UniqueIdentifier>{7BE134FC-6783-5FD2-503E-73263C7FE622}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="extern\volk">
+      <UniqueIdentifier>{F36F17BB-5F25-90B0-E819-8A8754CE86B4}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src">
       <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
     </Filter>
@@ -30,11 +36,17 @@
     <ClInclude Include="src\Reignite\timer.h">
       <Filter>src\Reignite</Filter>
     </ClInclude>
+    <ClInclude Include="src\Reignite\vulkan_impl.h">
+      <Filter>src\Reignite</Filter>
+    </ClInclude>
     <ClInclude Include="src\Reignite\window.h">
       <Filter>src\Reignite</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\extern\volk\volk.c">
+      <Filter>extern\volk</Filter>
+    </ClCompile>
     <ClCompile Include="src\Reignite\application.cpp">
       <Filter>src\Reignite</Filter>
     </ClCompile>

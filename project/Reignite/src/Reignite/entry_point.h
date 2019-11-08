@@ -7,9 +7,7 @@ extern Reignite::Application* Reignite::CreateApplication();
 
 int main(int argc, char** argv) {
 
-  Reignite::Log::Init();
-  RI_INFO("Hello");
-
+  Reignite::Log::Init(); // TODO: This should be changed to application source code
   Reignite::CreateApplication()->Run();
 }
 

@@ -19,7 +19,7 @@ namespace Reignite {
    protected:
 
     bool is_running;
-    std::shared_ptr<Window> window;
+    std::unique_ptr<Window> window;
   };
 
   // To be defined in client

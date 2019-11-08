@@ -4,6 +4,7 @@
 Reignite::Application::Application() {
   
   window = std::unique_ptr<Window>(Window::Create());
+  is_running = true;
 }
 
 Reignite::Application::~Application() { }

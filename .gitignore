@@ -36,6 +36,7 @@
 *.filters
 *.user
 *.sln
+*.spv
 
 # directories
 bin

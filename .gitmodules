@@ -6,3 +6,6 @@
 	url = https://github.com/glfw/glfw.git
 [submodule "bar1"]
 	branch = master
+[submodule "extern/volk"]
+	path = extern/volk
+	url = https://github.com/zeux/volk.git

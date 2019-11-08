@@ -7,8 +7,11 @@
 #include "basic_types.h"
 
 #include "../../glfw/include/GLFW/glfw3.h"
+#include "../../glfw/include/GLFW/glfw3native.h"
 
 namespace Reignite {
+
+  struct VkData;
 
   struct WindowParams {
 
@@ -31,6 +34,8 @@ namespace Reignite {
     inline const u16 getWidth() { return params.width; }
     inline const u16 getHeight() { return params.height; }
 
+    static Window* Create(const WindowParams& params = WindowParams());
+   
    private:
 
     void init(const WindowParams& params);
@@ -38,11 +43,8 @@ namespace Reignite {
 
     GLFWwindow* window;
 
+    VkData* vk_data;
     WindowParams params;
-
-   public:
-
-    static Window* Create(const WindowParams& params = WindowParams());
   };
 
 }

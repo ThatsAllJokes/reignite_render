@@ -16,17 +16,21 @@ project "Reignite"
   language "C++"
 
   files {
+    "extern/volk/volk.c",
     "project/Reignite/src/**.h",
-    "project/Reignite/src/**.cpp",
+    "project/Reignite/src/**.cpp"
   }
 
   includedirs {
+    "C:\\VulkanSDK\\1.1.108.0\\Include",
+    "extern/volk",
     "extern/spdlog/include",
     "extern/glfw/include"
   }
 
   links {
-    "GLFW"
+    "GLFW",
+    "C:\\VulkanSDK\\1.1.108.0\\Lib\\vulkan-1"
   }
 
   configuration "Debug"
@@ -35,14 +39,28 @@ project "Reignite"
     objdir ("bin-int/Debug/x64/Reignite")
 
     defines {
+      "WIN32_LEAN_AND_MEAN",
+      "NOMINMAX",
       "RI_PLATFORM_WINDOWS",
       "RI_BUILD_DLL",
-      "RI_DEBUG"
+      "RI_DEBUG",
+      "_WIN32",
+      "_GLFW_WIN32",
+      "GLFW_EXPOSE_NATIVE_WIN32",
+      "VK_USE_PLATFORM_WIN32_KHR",
+      "_CRT_SECURE_NO_WARNINGS"
     }
 
-    --postbuildcommands {
-      --"copy bin/Debug/x64/Reignite/Reignite.dll bin/Debug/x64/Render/Reignite.dll"
-    --}
+    flags {
+      "Symbols"
+    }
+
+    dll_dest = '"$(SolutionDir)..\\bin\\Debug\\x64\\Reignite\\*.dll"'
+    dll_targ = '"$(SolutionDir)..\\bin\\Debug\\x64\\Render\\*.dll"'
+
+    postbuildcommands {
+      'copy /Y ' .. dll_dest .. ' ' .. dll_targ .. ''
+    }
   
   configuration { }
   
@@ -86,6 +104,10 @@ project "Reignite"
       defines {
         "RI_PLATFORM_WINDOWS",
         "RI_DEBUG"
+      }
+
+      flags {
+        "Symbols"
       }
 
     configuration { }
