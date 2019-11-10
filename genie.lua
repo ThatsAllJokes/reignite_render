@@ -24,7 +24,7 @@ project "Reignite"
   }
 
   includedirs {
-    "C:\\VulkanSDK\\1.1.108.0\\Include",
+    "$(VULKAN_SDK)\\Include",
     "extern/glm/glm",
     "extern/volk",
     "extern/spdlog/include",
@@ -34,10 +34,6 @@ project "Reignite"
   links {
     "GLFW",
     "C:\\VulkanSDK\\1.1.108.0\\Lib\\vulkan-1"
-  }
-
-  custombuildtask {
-    --"", "", 
   }
 
   configuration "Debug"
@@ -64,7 +60,6 @@ project "Reignite"
 
     dll_dest = '"$(SolutionDir)..\\bin\\Debug\\x64\\Reignite\\*.dll"'
     dll_targ = '"$(SolutionDir)..\\bin\\Debug\\x64\\Render\\*.dll"'
-
     postbuildcommands {
       'copy /Y ' .. dll_dest .. ' ' .. dll_targ .. ''
     }
@@ -84,61 +79,66 @@ project "Reignite"
 
   configuration { }
 
-  project "Render"
-    location "project/Render"
-    kind "ConsoleApp"
-    language "C++"
+  --custombuildtask {
+    --{"project/shaders/triangle.vert.glsl", "project/shaders/triangle.vert.spv", 
+    --{"%(FullPath)"}, {"$(VULKAN_SDK)\\Bin\\glslangValidator %(FullPath) -V -o "}},
+  --}
 
-    files {
-      "project/Render/src/**.h",
-      "project/Render/src/**.cpp",
+project "Render"
+  location "project/Render"
+  kind "ConsoleApp"
+  language "C++"
+
+  files {
+    "project/Render/src/**.h",
+    "project/Render/src/**.cpp",
+  }
+
+  includedirs {
+    "extern/glm/glm",
+    "extern/spdlog/include",
+    "extern/glfw/include",
+    "project/Reignite/src",
+  }
+
+  links {
+    "Reignite"
+  }
+
+  configuration "Debug" 
+  
+    targetdir ("bin/Debug/x64/Render")
+    objdir ("bin-int/Debug/x64/Render")
+
+    defines {
+      "RI_PLATFORM_WINDOWS",
+      "RI_DEBUG"
     }
 
-    includedirs {
-      "extern/glm/glm",
-      "extern/spdlog/include",
-      "extern/glfw/include",
-      "project/Reignite/src",
+    flags {
+      "Symbols"
     }
 
-    links {
-      "Reignite"
+  configuration { }
+
+  configuration "configurations:Release" 
+  
+    targetdir ("bin/Release/x64/Render")
+    objdir ("bin-int/Release/x64/Render")
+
+    defines {
+      "RI_PLATFORM_WINDOWS",
+      "RI_RELEASE"
     }
 
-    configuration "Debug" 
-    
-      targetdir ("bin/Debug/x64/Render")
-      objdir ("bin-int/Debug/x64/Render")
-
-      defines {
-        "RI_PLATFORM_WINDOWS",
-        "RI_DEBUG"
-      }
-
-      flags {
-        "Symbols"
-      }
-
-    configuration { }
-
-    configuration "configurations:Release" 
-    
-      targetdir ("bin/Release/x64/Render")
-      objdir ("bin-int/Release/x64/Render")
-
-      defines {
-        "RI_PLATFORM_WINDOWS",
-        "RI_RELEASE"
-      }
-
-    configuration { }
+  configuration { }
 
 -- //////////////////////////////////////////////////////////////////////////////
 -- // Side Projects /////////////////////////////////////////////////////////////
 -- //////////////////////////////////////////////////////////////////////////////
 
 project "GLFW"
-location "project/GLFW"
+  location "project/GLFW"
   kind "StaticLib"
   language "C"
 
