@@ -6,8 +6,8 @@
 #include "core.h"
 #include "basic_types.h"
 
-#include "../../glfw/include/GLFW/glfw3.h"
-#include "../../glfw/include/GLFW/glfw3native.h"
+#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 
 namespace Reignite {
 

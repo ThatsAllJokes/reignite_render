@@ -16,13 +16,16 @@ project "Reignite"
   language "C++"
 
   files {
+    "extern/glm/glm/**.hpp",
     "extern/volk/volk.c",
     "project/Reignite/src/**.h",
-    "project/Reignite/src/**.cpp"
+    "project/Reignite/src/**.cpp",
+    "project/shaders/**.glsl"
   }
 
   includedirs {
     "C:\\VulkanSDK\\1.1.108.0\\Include",
+    "extern/glm/glm",
     "extern/volk",
     "extern/spdlog/include",
     "extern/glfw/include"
@@ -31,6 +34,10 @@ project "Reignite"
   links {
     "GLFW",
     "C:\\VulkanSDK\\1.1.108.0\\Lib\\vulkan-1"
+  }
+
+  custombuildtask {
+    --"", "", 
   }
 
   configuration "Debug"
@@ -88,7 +95,9 @@ project "Reignite"
     }
 
     includedirs {
+      "extern/glm/glm",
       "extern/spdlog/include",
+      "extern/glfw/include",
       "project/Reignite/src",
     }
 
