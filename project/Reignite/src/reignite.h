@@ -6,6 +6,7 @@
 #include "Reignite/timer.h"
 #include "Reignite/log.h"
 #include "Reignite/window.h"
+#include "Reignite/component_system.h"
 
 // Entry Point ------------------
 #include "Reignite/entry_point.h"

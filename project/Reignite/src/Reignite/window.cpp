@@ -6,16 +6,38 @@
 
 namespace Reignite {
 
+  struct State {
+
+    std::string title;
+    u16 width;
+    u16 height;
+
+    std::vector<u32> indices;
+
+    std::vector<TransformComponent> transforms;
+    std::vector<GeometryComponent> geometries;
+    std::vector<MaterialComponent> materials;
+    std::vector<RenderComponent> renders;
+    CameraComponent camera;
+
+    std::vector<Geometry> db_geometries;
+    std::vector<Material> db_materials;
+    std::vector<Texture> db_textures;
+
+    State(const std::string& t = "Reignite Render",
+      u16 w = 1280, u16 h = 720) : title(t), width(w), height(h) {}
+  };
+
   static bool s_glfw_initialized = false;
 
-  Window* Window::Create(const WindowParams& params) {
+  Window* Window::Create(const State* state) {
     
-    return new Window(params);
+    return new Window(state);
   }
 
-  Window::Window(const WindowParams& params) {
+  Window::Window(const State* state) {
 
-    init(params);
+    init(state);
   }
 
   Window::~Window() {
@@ -23,13 +45,11 @@ namespace Reignite {
     shutdown();
   }
 
-  void Window::init(const WindowParams& p) {
+  void Window::init(const State* p) {
 
-    params.title = p.title;
-    params.width = p.width;
-    params.height = p.height;
+    state = (State*)p; // TODO: Resolve this on the future
 
-    RI_INFO("Creating window . . . {0}: ({1}, {2})", p.title, p.width, p.height);
+    RI_INFO("Creating window . . . {0}: ({1}, {2})", p->title, p->width, p->height);
 
     /*if(!s_glfw_initialized) {
     
@@ -237,4 +257,7 @@ namespace Reignite {
     vkDestroyInstance(instance, 0);
   }
 
+  inline const u16 Window::getWidth() { return state->width; }
+
+  inline const u16 Window::getHeight() { return state->height; }
 }

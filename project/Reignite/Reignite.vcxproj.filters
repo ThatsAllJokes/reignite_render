@@ -755,6 +755,9 @@
     <ClInclude Include="src\Reignite\basic_types.h">
       <Filter>src\Reignite</Filter>
     </ClInclude>
+    <ClInclude Include="src\Reignite\component_system.h">
+      <Filter>src\Reignite</Filter>
+    </ClInclude>
     <ClInclude Include="src\Reignite\core.h">
       <Filter>src\Reignite</Filter>
     </ClInclude>
@@ -779,6 +782,9 @@
       <Filter>extern\volk</Filter>
     </ClCompile>
     <ClCompile Include="src\Reignite\application.cpp">
+      <Filter>src\Reignite</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Reignite\component_system.cpp">
       <Filter>src\Reignite</Filter>
     </ClCompile>
     <ClCompile Include="src\Reignite\log.cpp">

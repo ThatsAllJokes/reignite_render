@@ -5,49 +5,39 @@
 
 #include "core.h"
 #include "basic_types.h"
+#include "component_system.h"
 
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
 namespace Reignite {
 
-  struct VkData;
-
-  struct WindowParams {
-
-    std::string title;
-    u16 width;
-    u16 height;
-
-    WindowParams(const std::string& t = "Reignite Render",
-      u16 w = 1280, u16 h = 720) : title(t), width(w), height(h) {}
-  };
+  struct State;
 
   class REIGNITE_API Window {
    public:
     
-    Window(const WindowParams& params);
+    Window(const State* state);
     virtual ~Window();
 
     void update();
 
-    inline const u16 getWidth() { return params.width; }
-    inline const u16 getHeight() { return params.height; }
+    const u16 getWidth();
+    const u16 getHeight();
 
-    static Window* Create(const WindowParams& params = WindowParams());
+    static Window* Create(const State* state/* = State()*/);
    
    private:
 
-    void init(const WindowParams& params);
+    void init(const State* state);
     void shutdown();
 
     GLFWwindow* window;
 
-    VkData* vk_data;
-    WindowParams params;
+    State* state;
   };
 
-}
+} // end of Reignite namespace
 
 #endif // _RI_WINDOW_
 
