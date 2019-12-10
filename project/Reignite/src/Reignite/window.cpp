@@ -124,16 +124,19 @@ namespace Reignite {
     VkRenderPass renderPass = createRenderPass(device, swapchainFormat);
     assert(renderPass);
 
-    VkShaderModule triangleVS = loadShader(device, "../shaders/triangle.vert.spv");
+    VkShaderModule triangleVS = loadShader(device, "../shaders/basic.vert.spv");
     assert(triangleVS);
 
-    VkShaderModule triangleFS = loadShader(device, "../shaders/triangle.frag.spv");
+    VkShaderModule triangleFS = loadShader(device, "../shaders/basic.frag.spv");
     assert(triangleFS);
 
     // TODO: This is critical for performance!
     VkPipelineCache pipelineCache = 0;
 
-    VkPipelineLayout triangleLayout = createPipelineLayout(device);
+    VkDescriptorSetLayout descriptorSetLayout = createDescriptorSetLayout(device);
+    assert(descriptorSetLayout);
+
+    VkPipelineLayout triangleLayout = createPipelineLayout(device, descriptorSetLayout);
     assert(triangleLayout);
 
     VkPipeline trianglePipeline = createGraphicsPipeline(device, pipelineCache, renderPass, triangleVS, triangleFS, triangleLayout);
@@ -145,13 +148,31 @@ namespace Reignite {
     VkCommandPool commandPool = createCommandPool(device, familyIndex);
     assert(commandPool);
 
+    Buffer vertexBuffer = createVertexBuffer(device, physicalDevice, vertices, commandPool, queue);
+    assert(vertexBuffer.buffer);
+    assert(vertexBuffer.bufferMemory);
+
+    Buffer indexBuffer = createIndexBuffer(device, physicalDevice, indices, commandPool, queue);
+    assert(indexBuffer.buffer);
+    assert(indexBuffer.bufferMemory);
+
+    std::vector<Buffer> uniformBuffers;
+    createUniformBuffers(device, physicalDevice, swapchain, uniformBuffers);
+
+    VkDescriptorPool descriptorPool = createDescriptorPool(device, swapchain);
+    assert(descriptorPool);
+
+    std::vector<VkDescriptorSet> descriptorSets = createDescriptorSets(device, swapchain, descriptorPool, descriptorSetLayout, uniformBuffers);
+    for (size_t i = 0; i < descriptorSets.size(); ++i)
+      assert(descriptorSets[i]);
+
     VkCommandBufferAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
     allocateInfo.commandPool = commandPool;
     allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocateInfo.commandBufferCount = 1;
 
     VkCommandBuffer commandBuffer = 0;
-    vkAllocateCommandBuffers(device, &allocateInfo, &commandBuffer);
+    VK_CHECK(vkAllocateCommandBuffers(device, &allocateInfo, &commandBuffer));
 
     while (!glfwWindowShouldClose(window)) {
 
@@ -192,7 +213,17 @@ namespace Reignite {
       vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
       vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
-      vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+      VkBuffer vertexBuffers = { vertexBuffer.buffer };
+      VkDeviceSize offset[] = { 0 };
+      vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffers, offset);
+      vkCmdBindIndexBuffer(commandBuffer, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT16);
+
+      vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, triangleLayout, 0, 1,
+        &descriptorSets[0], 0, nullptr);
+
+      //vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+      vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
       vkCmdEndRenderPass(commandBuffer);
 
@@ -202,6 +233,8 @@ namespace Reignite {
       VK_CHECK(vkEndCommandBuffer(commandBuffer));
 
       VkPipelineStageFlags submitStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+      updateUniformBuffer(device, uniformBuffers, imageIndex);
 
       VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
       submitInfo.waitSemaphoreCount = 1;
@@ -231,6 +264,16 @@ namespace Reignite {
     vkDestroyCommandPool(device, commandPool, 0);
 
     destroySwapchain(device, swapchain);
+
+    for (size_t i = 0; i < swapchain.images.size(); ++i)
+      destroyBuffer(device, uniformBuffers[i]);
+
+    vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+
+    vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+
+    destroyBuffer(device, vertexBuffer);
+    destroyBuffer(device, indexBuffer);
 
     vkDestroyPipeline(device, trianglePipeline, 0);
     vkDestroyPipelineLayout(device, triangleLayout, 0);
