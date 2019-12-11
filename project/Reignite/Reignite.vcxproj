@@ -383,8 +383,14 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\shaders\triangle.frag.glsl" />
-    <None Include="..\shaders\triangle.vert.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl">
+      <FileType>Text</FileType>
+      <Command>$(VULKAN_SDK)\Bin\glslangValidator %(FullPath) -V -o ../shaders/%(Filename).spv
+</Command>
+      <Outputs>../shaders/%(Filename).spv;%(Outputs)</Outputs>
+      <SubType>Designer</SubType>
+      <Message></Message>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GLFW\GLFW.vcxproj">

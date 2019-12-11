@@ -20,7 +20,7 @@ project "Reignite"
     "extern/volk/volk.c",
     "project/Reignite/src/**.h",
     "project/Reignite/src/**.cpp",
-    "project/shaders/**.glsl"
+    --"project/shaders/**.glsl"
   }
 
   includedirs {
@@ -79,10 +79,10 @@ project "Reignite"
 
   configuration { }
 
-  --custombuildtask {
-    --{"project/shaders/triangle.vert.glsl", "project/shaders/triangle.vert.spv", 
-    --{"%(FullPath)"}, {"$(VULKAN_SDK)\\Bin\\glslangValidator %(FullPath) -V -o "}},
-  --}
+  custombuildtask {
+    { "project/shaders/*.glsl", "project/shaders/%(Filename).spv", 
+    { "%(FullPath)" }, { "$(VULKAN_SDK)\\Bin\\glslangValidator %(FullPath) -V -o ../shaders/%(Filename).spv" } },
+  }
 
 project "Render"
   location "project/Render"

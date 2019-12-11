@@ -36,14 +36,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\shaders\triangle.frag.glsl">
-      <Filter>shaders</Filter>
-    </None>
-    <None Include="..\shaders\triangle.vert.glsl">
-      <Filter>shaders</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="..\..\extern\glm\glm\common.hpp">
       <Filter>extern\glm\glm</Filter>
     </ClInclude>
@@ -796,5 +788,10 @@
     <ClCompile Include="src\Reignite\window.cpp">
       <Filter>src\Reignite</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\shaders\*.glsl">
+      <Filter>shaders</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>
