@@ -14,7 +14,7 @@ namespace Reignite {
     u16 width;
     u16 height;
 
-    std::vector<u32> indices;
+    std::vector<u32> indices; // vector that contains every "object" id
 
     std::vector<TransformComponent> transforms;
     std::vector<GeometryComponent> geometries;
@@ -38,13 +38,22 @@ namespace Reignite {
 
     void Run();
 
+   private:
+
+     void initialize();
+     void shutdown();
+
    protected:
+
+    struct GFXData;
+
+    GFXData* data;
 
     State state;
 
     bool is_running;
     std::unique_ptr<Window> window;
-
+    // scheduling system
     std::unique_ptr<ComponentSystem> component_system;
   };
 

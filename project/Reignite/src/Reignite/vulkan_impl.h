@@ -636,12 +636,6 @@ struct Buffer {
   VkDeviceMemory bufferMemory;
 };
 
-void destroyBuffer(VkDevice device, const Buffer& buffer) {
-
-  vkDestroyBuffer(device, buffer.buffer, nullptr);
-  vkFreeMemory(device, buffer.bufferMemory, nullptr);
-}
-
 void createBuffer(VkDevice device, VkPhysicalDevice physicalDevice, Buffer& buffer,
   VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) {
 
@@ -663,6 +657,12 @@ void createBuffer(VkDevice device, VkPhysicalDevice physicalDevice, Buffer& buff
   buffer.bufferMemory;
   VK_CHECK(vkAllocateMemory(device, &allocInfo, nullptr, &buffer.bufferMemory));
   VK_CHECK(vkBindBufferMemory(device, buffer.buffer, buffer.bufferMemory, 0));
+}
+
+void destroyBuffer(VkDevice device, const Buffer& buffer) {
+
+  vkDestroyBuffer(device, buffer.buffer, nullptr);
+  vkFreeMemory(device, buffer.bufferMemory, nullptr);
 }
 
 void copyBuffer(VkDevice device, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
@@ -814,17 +814,6 @@ std::vector<VkDescriptorSet> createDescriptorSets(VkDevice device, const Swapcha
 
   return descriptorSets;
 }
-
-const std::vector<Vertex> vertices = {
-  {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-  {{ 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-  {{ 0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}},
-  {{-0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}}
-};
-
-const std::vector<uint16_t> indices{
-  0, 1, 2, 2, 3, 0
-};
 
 void updateUniformBuffer(VkDevice device, std::vector<Buffer>& uniformBuffers, uint32_t currentImage) {
 

@@ -13,6 +13,7 @@
 namespace Reignite {
 
   struct State;
+  struct vk_data;
 
   class REIGNITE_API Window {
    public:
@@ -25,7 +26,9 @@ namespace Reignite {
     const u16 getWidth();
     const u16 getHeight();
 
-    static Window* Create(const State* state/* = State()*/);
+    inline GLFWwindow* const GetCurrentWindow() { return window; }
+
+    static Window* Create(const State* state);
    
    private:
 
@@ -34,6 +37,7 @@ namespace Reignite {
 
     GLFWwindow* window;
 
+    vk_data* data;
     State* state;
   };
 
