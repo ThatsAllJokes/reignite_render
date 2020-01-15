@@ -75,8 +75,13 @@ namespace Reignite {
 
   void Window::update() {
 
-    //glfwPollEvents();
+    glfwPollEvents();
     //glfwSwapBuffers(window);
+  }
+
+  bool Window::closeWindow() {
+
+    return glfwWindowShouldClose(window);
   }
 
   inline const u16 Window::getWidth() { return state->width; }

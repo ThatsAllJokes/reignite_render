@@ -88,9 +88,9 @@ void Reignite::Application::Run() {
   VkCommandBuffer commandBuffer = 0;
   VK_CHECK(vkAllocateCommandBuffers(data->device, &allocateInfo, &commandBuffer));
 
-  while (!glfwWindowShouldClose(window->GetCurrentWindow()) && is_running) {
+  while (!window->closeWindow() && is_running) {
 
-    glfwPollEvents();
+    window->update();
 
     resizeSwapchainIfNecessary(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass);
 
@@ -228,8 +228,7 @@ void Reignite::Application::initialize() {
   data->triangleFS = loadShader(data->device, "../shaders/basic.frag.spv");
   assert(data->triangleFS);
 
-  // TODO: This is critical for performance!
-  data->pipelineCache = 0;
+  data->pipelineCache = 0; // TODO: This is critical for performance!
 
   data->descriptorSetLayout = createDescriptorSetLayout(data->device);
   assert(data->descriptorSetLayout);
