@@ -1,7 +1,29 @@
 #include "application.h"
 
-#include "log.h"
 #include "vulkan_impl.h"
+
+#include "Components/transform_component.h"
+
+struct Reignite::State {
+  std::string title;
+  u16 width;
+  u16 height;
+
+  std::vector<u32> indices; // vector that contains every "object" id
+
+  std::vector<TransformComponent> transforms;
+  //std::vector<GeometryComponent> geometries;
+  //std::vector<MaterialComponent> materials;
+  //std::vector<RenderComponent> renders;
+  //CameraComponent camera;
+
+  //std::vector<Geometry> db_geometries;
+  //std::vector<Material> db_materials;
+  //std::vector<Texture> db_textures;
+
+  State(const std::string& t = "Reignite Render",
+    u16 w = 1280, u16 h = 720) : title(t), width(w), height(h) {}
+};
 
 struct Reignite::Application::GFXData {
 
@@ -73,12 +95,13 @@ const std::vector<uint16_t> indices{
 
 Reignite::Application::Application() {
 
+  state = new State();
   data = new GFXData();
 
-  window = std::unique_ptr<Window>(Window::Create(&state));
-  is_running = true;
+  window = std::unique_ptr<Window>(Window::Create(state));
+  component_system = std::unique_ptr<ComponentSystem>(new ComponentSystem(state));
 
-  component_system = std::unique_ptr<ComponentSystem>(new ComponentSystem(&state));
+  is_running = true;
 }
 
 Reignite::Application::~Application() {
@@ -89,6 +112,8 @@ Reignite::Application::~Application() {
 void Reignite::Application::Run() {
 
   initialize();
+
+  component_system->update();
 
   VkCommandBufferAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
   allocateInfo.commandPool = data->commandPool;

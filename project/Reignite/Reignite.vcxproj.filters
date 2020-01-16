@@ -31,6 +31,9 @@
     <Filter Include="src\Reignite">
       <UniqueIdentifier>{00F8502E-EC5A-E0D2-95E0-18898122AC55}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Reignite\Components">
+      <UniqueIdentifier>{82B93E2D-EEF0-86C4-F7FA-EAE763B1ADBD}</UniqueIdentifier>
+    </Filter>
     <Filter Include="shaders">
       <UniqueIdentifier>{0F45D591-7B24-542D-843C-DF03F09ABA8E}</UniqueIdentifier>
     </Filter>
@@ -768,6 +771,9 @@
     <ClInclude Include="src\Reignite\window.h">
       <Filter>src\Reignite</Filter>
     </ClInclude>
+    <ClInclude Include="src\Reignite\Components\transform_component.h">
+      <Filter>src\Reignite\Components</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\extern\volk\volk.c">
@@ -787,6 +793,9 @@
     </ClCompile>
     <ClCompile Include="src\Reignite\window.cpp">
       <Filter>src\Reignite</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Reignite\Components\transform_component.cpp">
+      <Filter>src\Reignite\Components</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

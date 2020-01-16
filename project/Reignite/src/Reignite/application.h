@@ -6,29 +6,9 @@
 
 #include "core.h"
 #include "window.h"
+#include "component_system.h"
 
 namespace Reignite {
-
-  struct State {
-    std::string title;
-    u16 width;
-    u16 height;
-
-    std::vector<u32> indices; // vector that contains every "object" id
-
-    std::vector<TransformComponent> transforms;
-    std::vector<GeometryComponent> geometries;
-    std::vector<MaterialComponent> materials;
-    std::vector<RenderComponent> renders;
-    CameraComponent camera;
-
-    std::vector<Geometry> db_geometries;
-    std::vector<Material> db_materials;
-    std::vector<Texture> db_textures;
-
-    State(const std::string& t = "Reignite Render",
-      u16 w = 1280, u16 h = 720) : title(t), width(w), height(h) {}
-  };
 
   class REIGNITE_API Application {
    public:
@@ -45,15 +25,14 @@ namespace Reignite {
 
    protected:
 
+    State* state; //TODO: this could be a shared_ptr as its info will be passed and shared between classes
+
     struct GFXData;
-
     GFXData* data;
-
-    State state;
 
     bool is_running;
     std::unique_ptr<Window> window;
-    // scheduling system
+    //TODO: scheduling system
     std::unique_ptr<ComponentSystem> component_system;
   };
 

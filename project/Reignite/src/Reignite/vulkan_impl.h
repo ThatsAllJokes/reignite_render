@@ -182,6 +182,7 @@ VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint
   const char* extensions[] = {
 
     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+    VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME, // Allows to send data/objects to the shader
   };
 
   VkDeviceCreateInfo createInfo = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };

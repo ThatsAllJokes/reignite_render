@@ -1,18 +1,16 @@
 #ifndef _RI_COMPONENT_SYSTEM_H_
 #define _RI_COMPONENT_SYSTEM_H_ 1
 
-#include <vector>
 #include <string>
 
 #include "core.h"
-#include "basic_types.h"
 
 namespace Reignite {
 
   struct State;
 
-  struct Geometry {
-    std::vector<vec3f> vertices;
+  /*struct Geometry {
+    std::vector<Vertex> vertices;
     std::vector<u16> indices;
   };
 
@@ -22,18 +20,9 @@ namespace Reignite {
 
   struct Texture {
     std::string path;
-  };
+  };*/
 
-  class TransformComponent {
-    vec4f position;
-    vec4f rotation;
-    vec4f scale;
-    mat4f model;
-    mat4f world;
-    mat4f* parent_world;
-  };
-
-  class GeometryComponent {
+  /*class GeometryComponent {
     Geometry* mesh;
   };
 
@@ -55,9 +44,7 @@ namespace Reignite {
     float far_z;
     mat4f proj_matrix;
     mat4f view_matrix;
-  };
-
-  class LightComponent;
+  };*/
 
   class REIGNITE_API ComponentSystem {
    public:
@@ -72,13 +59,6 @@ namespace Reignite {
 
     bool initialize(const State* state);
     void shutdown();
-
-    void updateTransforms();
-    void updateGeometries();
-    void updateMaterials();
-    void updateRenders();
-    void updateCameras();
-    void updateLights();
 
     State* state;
   };

@@ -367,6 +367,7 @@
     <ClInclude Include="src\Reignite\timer.h" />
     <ClInclude Include="src\Reignite\vulkan_impl.h" />
     <ClInclude Include="src\Reignite\window.h" />
+    <ClInclude Include="src\Reignite\Components\transform_component.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\extern\volk\volk.c">
@@ -380,6 +381,8 @@
     <ClCompile Include="src\Reignite\timer.cpp">
     </ClCompile>
     <ClCompile Include="src\Reignite\window.cpp">
+    </ClCompile>
+    <ClCompile Include="src\Reignite\Components\transform_component.cpp">
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -1,9 +1,8 @@
 #include "window.h"
 
-#include "GLFW/glfw3.h"
-#include "GLFW/glfw3native.h"
-
 #include "log.h"
+
+#include "Components/transform_component.h"
 
 namespace Reignite {
 
@@ -16,14 +15,14 @@ namespace Reignite {
     std::vector<u32> indices;
 
     std::vector<TransformComponent> transforms;
-    std::vector<GeometryComponent> geometries;
-    std::vector<MaterialComponent> materials;
-    std::vector<RenderComponent> renders;
-    CameraComponent camera;
+    //std::vector<GeometryComponent> geometries;
+    //std::vector<MaterialComponent> materials;
+    //std::vector<RenderComponent> renders;
+    //CameraComponent camera;
 
-    std::vector<Geometry> db_geometries;
-    std::vector<Material> db_materials;
-    std::vector<Texture> db_textures;
+    //std::vector<Geometry> db_geometries;
+    //std::vector<Material> db_materials;
+    //std::vector<Texture> db_textures;
 
     State(const std::string& t = "Reignite Render",
       u16 w = 1280, u16 h = 720) : title(t), width(w), height(h) {}

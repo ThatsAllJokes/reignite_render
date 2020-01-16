@@ -3,12 +3,12 @@
 
 #include <string>
 
-#include "core.h"
-#include "basic_types.h"
-#include "component_system.h"
-
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
+
+#include "core.h"
+#include "basic_types.h"
+
 
 namespace Reignite {
 
