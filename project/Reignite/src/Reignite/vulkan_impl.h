@@ -16,6 +16,8 @@
 
 #include <volk.h>
 
+#include "log.h"
+
 #define VK_CHECK(call) \
   do { \
     VkResult result_ = call; \
@@ -76,8 +78,7 @@ VkBool32 debugReportCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTyp
 
   char message[4096];
   snprintf(message, ARRAYSIZE(message), "%s: %s\n", type, pMessage);
-
-  printf("%s", message);
+  RI_ERROR("{0}\n", message);
 
 #ifdef _WIN32
   OutputDebugString(message);
@@ -136,7 +137,7 @@ VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t 
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(physicalDevices[i], &props);
 
-    printf("GPU%d: %s\n", i, props.deviceName);
+    RI_INFO("GPU{0}: {1}", i, props.deviceName);
 
     uint32_t familyIndex = getGraphicsFamilyIndex(physicalDevices[i]);
     if (familyIndex == VK_QUEUE_FAMILY_IGNORED)
@@ -160,11 +161,11 @@ VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t 
 
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(result, &props);
-    printf("Selected GPU: %s\n", props.deviceName);
+    RI_INFO("Selected GPU: {0}\n", props.deviceName);
   }
   else {
 
-    printf("ERROR: No GPUs found\n");
+    RI_ERROR("ERROR: No GPUs found\n");
   }
   return result;
 }
@@ -401,8 +402,9 @@ VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout des
 }
 
 struct Vertex {
-  glm::vec2 position;
-  glm::vec3 color;
+  glm::vec3 position;
+  glm::vec3 normal;
+  glm::vec2 texcoord;
 
   static VkVertexInputBindingDescription getBindingDescription() {
 
@@ -414,17 +416,22 @@ struct Vertex {
     return bindingDescription;
   }
 
-  static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescription() {
-    std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
+  static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescription() {
+    std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = {};
     attributeDescriptions[0].binding = 0; // where this attribute gets its data
     attributeDescriptions[0].location = 0; // where this attribute is binded
-    attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT; // attribute data (size & type)
+    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT; // attribute data (size & type)
     attributeDescriptions[0].offset = offsetof(Vertex, position); // number of bytes since start of per-vertex data
 
     attributeDescriptions[1].binding = 0;
     attributeDescriptions[1].location = 1;
     attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[1].offset = offsetof(Vertex, color);
+    attributeDescriptions[1].offset = offsetof(Vertex, normal);
+
+    attributeDescriptions[2].binding = 0;
+    attributeDescriptions[2].location = 2;
+    attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+    attributeDescriptions[2].offset = offsetof(Vertex, texcoord);
 
     return attributeDescriptions;
   }
@@ -661,8 +668,8 @@ void createBuffer(VkDevice device, VkPhysicalDevice physicalDevice, Buffer& buff
 
 void destroyBuffer(VkDevice device, const Buffer& buffer) {
 
-  vkDestroyBuffer(device, buffer.buffer, nullptr);
-  vkFreeMemory(device, buffer.bufferMemory, nullptr);
+  vkFreeMemory(device, buffer.bufferMemory, 0);
+  vkDestroyBuffer(device, buffer.buffer, 0);
 }
 
 void copyBuffer(VkDevice device, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
@@ -823,7 +830,7 @@ void updateUniformBuffer(VkDevice device, std::vector<Buffer>& uniformBuffers, u
   float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
   UniformBufferObject ubo = {};
-  ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+  ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
   ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
   ubo.proj = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 10.0f);
   //ubo.proj[1][1] *= -1; // TODO: I already compensate de Y axis in the viewport. Is that correct?
