@@ -762,6 +762,9 @@
     <ClInclude Include="src\Reignite\log.h">
       <Filter>src\Reignite</Filter>
     </ClInclude>
+    <ClInclude Include="src\Reignite\render_context.h">
+      <Filter>src\Reignite</Filter>
+    </ClInclude>
     <ClInclude Include="src\Reignite\timer.h">
       <Filter>src\Reignite</Filter>
     </ClInclude>
@@ -771,8 +774,14 @@
     <ClInclude Include="src\Reignite\window.h">
       <Filter>src\Reignite</Filter>
     </ClInclude>
+    <ClInclude Include="src\Reignite\Components\camera_component.h">
+      <Filter>src\Reignite\Components</Filter>
+    </ClInclude>
     <ClInclude Include="src\Reignite\Components\transform_component.h">
       <Filter>src\Reignite\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Reignite\display_list.h">
+      <Filter>src\Reignite</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -794,13 +803,25 @@
     <ClCompile Include="src\Reignite\window.cpp">
       <Filter>src\Reignite</Filter>
     </ClCompile>
+    <ClCompile Include="src\Reignite\Components\camera_component.cpp">
+      <Filter>src\Reignite\Components</Filter>
+    </ClCompile>
     <ClCompile Include="src\Reignite\Components\transform_component.cpp">
       <Filter>src\Reignite\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Reignite\render_context.cpp">
+      <Filter>src\Reignite</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Reignite\display_list.cpp">
+      <Filter>src\Reignite</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\shaders\*.glsl">
       <Filter>shaders</Filter>
     </CustomBuild>
+    <CustomBuild Include="..\shaders\*.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl" />
   </ItemGroup>
 </Project>

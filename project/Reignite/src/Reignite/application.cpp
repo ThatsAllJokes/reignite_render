@@ -3,6 +3,7 @@
 #include "vulkan_impl.h"
 
 #include "Components/transform_component.h"
+#include "Components/camera_component.h"
 
 struct Reignite::State {
   std::string title;
@@ -11,11 +12,11 @@ struct Reignite::State {
 
   std::vector<u32> indices; // vector that contains every "object" id
 
+  CameraComponent camera;
   std::vector<TransformComponent> transforms;
   //std::vector<GeometryComponent> geometries;
   //std::vector<MaterialComponent> materials;
   //std::vector<RenderComponent> renders;
-  //CameraComponent camera;
 
   //std::vector<Geometry> db_geometries;
   //std::vector<Material> db_materials;
@@ -106,14 +107,13 @@ Reignite::Application::Application() {
 
 Reignite::Application::~Application() {
 
+  delete state;
   delete data;
 }
 
 void Reignite::Application::Run() {
 
   initialize();
-
-  component_system->update();
 
   VkCommandBufferAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
   allocateInfo.commandPool = data->commandPool;
@@ -126,6 +126,8 @@ void Reignite::Application::Run() {
   while (!window->closeWindow() && is_running) {
 
     window->update();
+
+    component_system->update();
 
     resizeSwapchainIfNecessary(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass);
 

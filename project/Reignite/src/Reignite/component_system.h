@@ -35,15 +35,6 @@ namespace Reignite {
     bool visible;
     GeometryComponent* geometry;
     MaterialComponent* material;
-  };
-
-  class CameraComponent {
-    float fov;
-    float aspect;
-    float near_z;
-    float far_z;
-    mat4f proj_matrix;
-    mat4f view_matrix;
   };*/
 
   class REIGNITE_API ComponentSystem {
@@ -53,7 +44,6 @@ namespace Reignite {
     ~ComponentSystem();
 
     void update();
-    void draw();
 
    private:
 

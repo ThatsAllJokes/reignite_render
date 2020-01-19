@@ -5,6 +5,7 @@
 #include <algorithm>
 
 #include "Components/transform_component.h"
+#include "Components/camera_component.h"
 
 namespace Reignite {
 
@@ -16,11 +17,11 @@ namespace Reignite {
 
     std::vector<u32> indices;
 
+    CameraComponent camera;
     std::vector<TransformComponent> transforms;
     //std::vector<GeometryComponent> geometries;
     //std::vector<MaterialComponent> materials;
     //std::vector<RenderComponent> renders;
-    //CameraComponent camera;
 
     //std::vector<Geometry> db_geometries;
     //std::vector<Material> db_materials;
@@ -32,6 +33,7 @@ namespace Reignite {
 }
 
 Reignite::ComponentSystem::ComponentSystem(const State* state) {
+
   initialize(state);
 }
 
@@ -41,8 +43,6 @@ void Reignite::ComponentSystem::update() {
 
   //std::for_each(state->transforms.begin(), state->transforms.end(), UpdateTransformComponent);
 }
-
-void Reignite::ComponentSystem::draw() {}
 
 bool Reignite::ComponentSystem::initialize(const State* state) { return false; }
 

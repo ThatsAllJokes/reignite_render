@@ -789,8 +789,8 @@ VkDescriptorPool createDescriptorPool(VkDevice device, const Swapchain& swapChai
   return descriptorPool;
 }
 
-std::vector<VkDescriptorSet> createDescriptorSets(VkDevice device, const Swapchain& swapchain, VkDescriptorPool descriptorPool,
-  VkDescriptorSetLayout descriptorSetLayout, std::vector<Buffer>& uniformBuffers) {
+std::vector<VkDescriptorSet> createDescriptorSets(VkDevice device, const Swapchain& swapchain, 
+  VkDescriptorPool descriptorPool, VkDescriptorSetLayout descriptorSetLayout, std::vector<Buffer>& uniformBuffers) {
 
   std::vector<VkDescriptorSetLayout> layouts(swapchain.images.size(), descriptorSetLayout);
   VkDescriptorSetAllocateInfo allocInfo = {};

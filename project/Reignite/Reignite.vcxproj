@@ -68,7 +68,8 @@
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PrecompiledHeader></PrecompiledHeader>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <ProgramDataBaseFileName>$(IntDir)Reignite.compile.pdb</ProgramDataBaseFileName>
@@ -89,7 +90,7 @@
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y &quot;$(SolutionDir)..\bin\Debug\x64\Reignite\*.dll&quot; &quot;$(SolutionDir)..\bin\Debug\x64\Render\*.dll&quot;</Command>
+      <Command>copy /Y "$(SolutionDir)..\bin\Debug\x64\Reignite\*.dll" "$(SolutionDir)..\bin\Debug\x64\Render\*.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -103,9 +104,11 @@
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PrecompiledHeader></PrecompiledHeader>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <DebugInformationFormat></DebugInformationFormat>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
     </ClCompile>
     <ResourceCompile>
@@ -362,11 +365,14 @@
     <ClInclude Include="src\Reignite\basic_types.h" />
     <ClInclude Include="src\Reignite\component_system.h" />
     <ClInclude Include="src\Reignite\core.h" />
+    <ClInclude Include="src\Reignite\display_list.h" />
     <ClInclude Include="src\Reignite\entry_point.h" />
     <ClInclude Include="src\Reignite\log.h" />
+    <ClInclude Include="src\Reignite\render_context.h" />
     <ClInclude Include="src\Reignite\timer.h" />
     <ClInclude Include="src\Reignite\vulkan_impl.h" />
     <ClInclude Include="src\Reignite\window.h" />
+    <ClInclude Include="src\Reignite\Components\camera_component.h" />
     <ClInclude Include="src\Reignite\Components\transform_component.h" />
   </ItemGroup>
   <ItemGroup>
@@ -376,11 +382,15 @@
     </ClCompile>
     <ClCompile Include="src\Reignite\component_system.cpp">
     </ClCompile>
+    <ClCompile Include="src\Reignite\display_list.cpp" />
     <ClCompile Include="src\Reignite\log.cpp">
     </ClCompile>
+    <ClCompile Include="src\Reignite\render_context.cpp" />
     <ClCompile Include="src\Reignite\timer.cpp">
     </ClCompile>
     <ClCompile Include="src\Reignite\window.cpp">
+    </ClCompile>
+    <ClCompile Include="src\Reignite\Components\camera_component.cpp">
     </ClCompile>
     <ClCompile Include="src\Reignite\Components\transform_component.cpp">
     </ClCompile>
@@ -392,7 +402,8 @@
 </Command>
       <Outputs>../shaders/%(Filename).spv;%(Outputs)</Outputs>
       <SubType>Designer</SubType>
-      <Message></Message>
+      <Message>
+      </Message>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
