@@ -28,6 +28,10 @@ struct Reignite::State {
 
 struct Reignite::Application::GFXData {
 
+  u32 frameCounter;
+  u32 lastFPS;
+  // std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp;
+
   VkDebugReportCallbackEXT debugCallback;
 
   VkInstance instance;
@@ -36,6 +40,9 @@ struct Reignite::Application::GFXData {
   uint32_t physicalDeviceCount;
 
   VkPhysicalDevice physicalDevice;
+  //VkPhysicalDeviceProperties physicalDeviceProperties;
+  //VkPhysicalDeviceFeatures physicalDeviceFeatures;
+  //VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
   uint32_t familyIndex;
 
   VkDevice device;

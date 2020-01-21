@@ -7,20 +7,17 @@
 #include "core.h"
 #include "basic_types.h"
 
+#include "Commands/base_command.h"
+
 namespace Reignite {
 
   class REIGNITE_API DisplayList {
    public:
 
-    class Command {
-
-      virtual void execute() = 0;
-    };
-
     DisplayList() {}
     ~DisplayList() {}
 
-    void add(const std::shared_ptr<Command> command) {
+    void add(const std::shared_ptr<BaseCommand> command) {
 
       data->commands.push_back(command);
     }
@@ -37,11 +34,11 @@ namespace Reignite {
       return copy;
     }
 
-  private:
+   private:
 
     struct Data {
 
-      std::vector<std::shared_ptr<Command> > commands;
+      std::vector<std::shared_ptr<BaseCommand> > commands;
     };
 
     Data* data;

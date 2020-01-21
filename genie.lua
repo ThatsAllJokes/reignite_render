@@ -20,6 +20,8 @@ project "Reignite"
     "extern/volk/volk.c",
     "project/Reignite/src/**.h",
     "project/Reignite/src/**.cpp",
+    "project/Reignite/src/Commands/**.h",
+    "project/Reignite/src/Commands/**.cpp",
     "project/Reignite/src/Components/**.h",
     "project/Reignite/src/Components/**.cpp",
     --"project/shaders/**.glsl"

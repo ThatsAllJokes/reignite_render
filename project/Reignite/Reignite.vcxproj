@@ -363,6 +363,9 @@
     <ClInclude Include="src\reignite.h" />
     <ClInclude Include="src\Reignite\application.h" />
     <ClInclude Include="src\Reignite\basic_types.h" />
+    <ClInclude Include="src\Reignite\Commands\base_command.h" />
+    <ClInclude Include="src\Reignite\Commands\clear_command.h" />
+    <ClInclude Include="src\Reignite\Commands\render_cube_demo_command.h" />
     <ClInclude Include="src\Reignite\component_system.h" />
     <ClInclude Include="src\Reignite\core.h" />
     <ClInclude Include="src\Reignite\display_list.h" />
@@ -380,12 +383,15 @@
     </ClCompile>
     <ClCompile Include="src\Reignite\application.cpp">
     </ClCompile>
+    <ClCompile Include="src\Reignite\Commands\render_cube_demo_command.cpp" />
     <ClCompile Include="src\Reignite\component_system.cpp">
     </ClCompile>
-    <ClCompile Include="src\Reignite\display_list.cpp" />
+    <ClCompile Include="src\Reignite\display_list.cpp">
+    </ClCompile>
     <ClCompile Include="src\Reignite\log.cpp">
     </ClCompile>
-    <ClCompile Include="src\Reignite\render_context.cpp" />
+    <ClCompile Include="src\Reignite\render_context.cpp">
+    </ClCompile>
     <ClCompile Include="src\Reignite\timer.cpp">
     </ClCompile>
     <ClCompile Include="src\Reignite\window.cpp">
