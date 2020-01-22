@@ -842,6 +842,18 @@ void updateUniformBuffer(VkDevice device, std::vector<Buffer>& uniformBuffers, u
   vkUnmapMemory(device, uniformBuffers[currentImage].bufferMemory);
 }
 
+VkCommandBuffer createCommandBuffer(VkDevice device, VkCommandPool commandPool) {
+
+  VkCommandBufferAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+  allocateInfo.commandPool = commandPool;
+  allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  allocateInfo.commandBufferCount = 1;
+
+  VkCommandBuffer commandBuffer = 0;
+  VK_CHECK(vkAllocateCommandBuffers(device, &allocateInfo, &commandBuffer));
+
+  return commandBuffer;
+}
 
 #endif // _VULKAN_IMPL_
 

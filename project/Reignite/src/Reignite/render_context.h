@@ -4,6 +4,7 @@
 #include "core.h"
 #include "basic_types.h"
 
+
 namespace Reignite {
 
   struct State;
@@ -12,6 +13,8 @@ namespace Reignite {
 
   struct RenderContextParams {
 
+    u32 max_geometries = 128;
+    u32 max_materials = 128;
     u32 max_textures = 128;
     u32 max_framebuffers = 128;
   };
@@ -22,25 +25,25 @@ namespace Reignite {
     RenderContext(const State* state);
     ~RenderContext();
 
-    void init(const RenderContextParams& params = RenderContextParams());
-
-    void finish();
-
+    u32 createGeometry();
+    u32 createMaterial();
     u32 createTexture();
     u32 createFrameBuffer();
 
-    void submitDisplayList(DisplayList* displayList);
+    void submitDisplayList(DisplayList* displayList = nullptr);
 
    private:
+
+    void init(const State* state, const RenderContextParams& params = RenderContextParams());
+    void shutdown();
 
     RenderContext(const RenderContext&) = delete;
     RenderContext& operator=(const RenderContext&) = delete;
 
     State* state;
-
-    // Render state
-    bool render_should_close;
-    RenderContextParams params;
+    
+    struct Data;
+    Data* data;
   };
 
 } // end of Reignite namespace

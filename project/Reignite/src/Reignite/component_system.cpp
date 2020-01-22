@@ -34,7 +34,7 @@ namespace Reignite {
 
 Reignite::ComponentSystem::ComponentSystem(const State* state) {
 
-  initialize(state);
+  init(state);
 }
 
 Reignite::ComponentSystem::~ComponentSystem() {}
@@ -44,7 +44,7 @@ void Reignite::ComponentSystem::update() {
   //std::for_each(state->transforms.begin(), state->transforms.end(), UpdateTransformComponent);
 }
 
-bool Reignite::ComponentSystem::initialize(const State* state) { return false; }
+bool Reignite::ComponentSystem::init(const State* state) { return false; }
 
 void Reignite::ComponentSystem::shutdown() {}
 

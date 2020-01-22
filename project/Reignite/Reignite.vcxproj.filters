@@ -31,14 +31,14 @@
     <Filter Include="src\Reignite">
       <UniqueIdentifier>{00F8502E-EC5A-E0D2-95E0-18898122AC55}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Reignite\Commands">
+      <UniqueIdentifier>{6E70899D-DADC-4498-A3D0-DCF50FFC6600}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Reignite\Components">
       <UniqueIdentifier>{82B93E2D-EEF0-86C4-F7FA-EAE763B1ADBD}</UniqueIdentifier>
     </Filter>
     <Filter Include="shaders">
       <UniqueIdentifier>{0F45D591-7B24-542D-843C-DF03F09ABA8E}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\Reignite\Commands">
-      <UniqueIdentifier>{5709e2d1-3844-456b-bf93-b9e24aa0b57c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -780,20 +780,20 @@
     <ClInclude Include="src\Reignite\window.h">
       <Filter>src\Reignite</Filter>
     </ClInclude>
+    <ClInclude Include="src\Reignite\Commands\base_command.h">
+      <Filter>src\Reignite\Commands</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Reignite\Commands\clear_command.h">
+      <Filter>src\Reignite\Commands</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Reignite\Commands\render_cube_demo_command.h">
+      <Filter>src\Reignite\Commands</Filter>
+    </ClInclude>
     <ClInclude Include="src\Reignite\Components\camera_component.h">
       <Filter>src\Reignite\Components</Filter>
     </ClInclude>
     <ClInclude Include="src\Reignite\Components\transform_component.h">
       <Filter>src\Reignite\Components</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Reignite\Commands\clear_command.h">
-      <Filter>src\Reignite\Commands</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Reignite\Commands\base_command.h">
-      <Filter>src\Reignite\Commands</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Reignite\Commands\render_cube_demo_command.h">
-      <Filter>src\Reignite\Commands</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -821,25 +821,19 @@
     <ClCompile Include="src\Reignite\window.cpp">
       <Filter>src\Reignite</Filter>
     </ClCompile>
+    <ClCompile Include="src\Reignite\Commands\render_cube_demo_command.cpp">
+      <Filter>src\Reignite\Commands</Filter>
+    </ClCompile>
     <ClCompile Include="src\Reignite\Components\camera_component.cpp">
       <Filter>src\Reignite\Components</Filter>
     </ClCompile>
     <ClCompile Include="src\Reignite\Components\transform_component.cpp">
       <Filter>src\Reignite\Components</Filter>
     </ClCompile>
-    <ClCompile Include="src\Reignite\Commands\render_cube_demo_command.cpp">
-      <Filter>src\Reignite\Commands</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\shaders\*.glsl">
       <Filter>shaders</Filter>
     </CustomBuild>
-    <CustomBuild Include="..\shaders\*.glsl" />
-    <CustomBuild Include="..\shaders\*.glsl" />
-    <CustomBuild Include="..\shaders\*.glsl" />
-    <CustomBuild Include="..\shaders\*.glsl" />
-    <CustomBuild Include="..\shaders\*.glsl" />
-    <CustomBuild Include="..\shaders\*.glsl" />
   </ItemGroup>
 </Project>

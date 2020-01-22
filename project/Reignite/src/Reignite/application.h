@@ -7,6 +7,7 @@
 #include "core.h"
 #include "window.h"
 #include "component_system.h"
+#include "render_context.h"
 
 namespace Reignite {
 
@@ -32,8 +33,9 @@ namespace Reignite {
 
     bool is_running;
     std::unique_ptr<Window> window;
-    //TODO: scheduling system
+    //TODO: scheduling system. This will be added as time allows to implementation
     std::unique_ptr<ComponentSystem> component_system;
+    std::unique_ptr<RenderContext> render_context;
   };
 
   // To be defined in client

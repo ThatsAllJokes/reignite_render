@@ -1,18 +1,37 @@
 #include "render_context.h"
 
+#include "display_list.h"
+
+
+struct Reignite::RenderContext::Data {
+
+  RenderContextParams params;
+
+  // Render state
+  bool render_should_close;
+};
+
 Reignite::RenderContext::RenderContext(const State* state) {
 
   this->state = (State*)state;
+  init(state); // TODO: This should be variable in the future
 }
 
-Reignite::RenderContext::~RenderContext() {}
+Reignite::RenderContext::~RenderContext() {
 
-void Reignite::RenderContext::init(const RenderContextParams& params) {
-
-  this->params = params;
+  shutdown();
 }
 
-void Reignite::RenderContext::finish() {
+void Reignite::RenderContext::submitDisplayList(Reignite::DisplayList* displayList) {
 
-  render_should_close = true;
+}
+
+void Reignite::RenderContext::init(const State* state, const RenderContextParams& params) {
+
+  data->params = params;
+}
+
+void Reignite::RenderContext::shutdown() {
+
+  data->render_should_close = true;
 }
