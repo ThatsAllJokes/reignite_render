@@ -13,6 +13,8 @@ struct Reignite::RenderContext::Data {
 
 Reignite::RenderContext::RenderContext(const State* state) {
 
+  data = new RenderContext::Data();
+
   this->state = (State*)state;
   init(state); // TODO: This should be variable in the future
 }

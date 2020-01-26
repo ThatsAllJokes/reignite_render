@@ -5,11 +5,12 @@
 #include <vector>
 
 #include "core.h"
-#include "window.h"
 #include "component_system.h"
 #include "render_context.h"
 
 namespace Reignite {
+
+  class Window;
 
   class REIGNITE_API Application {
    public:

@@ -1,5 +1,7 @@
 #include "application.h"
 
+#include "window.h"
+
 #include "vulkan_impl.h"
 
 #include "Components/transform_component.h"
@@ -71,6 +73,9 @@ struct Reignite::Application::GFXData {
   Swapchain swapchain;
 
   VkCommandPool commandPool;
+  Texture texture;
+  VkImageView textureImageView;
+  VkSampler textureSampler;
 
   Buffer vertexBuffer;
   Buffer indexBuffer;
@@ -83,24 +88,45 @@ struct Reignite::Application::GFXData {
 };
 
 const std::vector<Vertex> vertices = {
-  {{-0.5f, -0.5f, 0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-  {{ 0.5f, -0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-  {{ 0.5f,  0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
-  {{-0.5f,  0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
-
-  {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-  {{ 0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-  {{ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
-  {{-0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}
+  // TOP
+  {{-0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}}, // 0
+  {{ 0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}}, // 1
+  {{ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}, // 2
+  {{-0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}, // 3
+  // BOTTOM
+  {{-0.5f, -0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}}, // 4
+  {{ 0.5f, -0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}}, // 5
+  {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}, // 6
+  {{-0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}, // 7
+  // FRONT
+  {{-0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}}, // 8
+  {{ 0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}, // 9
+  {{ 0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}}, // 10
+  {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}, // 11
+  // BACK
+  {{-0.5f, -0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}}, // 12
+  {{ 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}, // 13
+  {{ 0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}}, // 14
+  {{-0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}, // 15
+  // LEFT
+  {{-0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}}, // 16
+  {{-0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, // 17
+  {{-0.5f, -0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}, // 18
+  {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}}, // 19
+  // RIGHT
+  {{ 0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}}, // 20
+  {{ 0.5f,  0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}, // 21
+  {{ 0.5f, -0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}}, // 22
+  {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}}, // 23
 };
 
 const std::vector<uint16_t> indices{
   0, 1, 2, 2, 3, 0, // Top
-  4, 5, 1, 1, 0, 4, // Back
-  1, 5, 6, 6, 2, 1, // Right
-  4, 0, 3, 3, 7, 4, // Left
-  3, 2, 6, 6, 7, 3, // Front
   4, 6, 5, 6, 4, 7, // Bottom
+  8, 9, 10, 10, 11, 8, // Front
+  12, 13, 14, 14, 15, 12, // Back
+  16, 18, 17, 18, 16, 19, // Left
+  20, 21, 22, 22, 23, 20, // Right
 };
 
 Reignite::Application::Application() {
@@ -283,6 +309,17 @@ void Reignite::Application::initialize() {
   data->commandPool = createCommandPool(data->device, data->familyIndex);
   assert(data->commandPool);
 
+  Buffer tmpBuffer = {}; // Buffer memory is deleted inside createTextureImage
+  data->texture = createTextureImage(data->device, data->physicalDevice, tmpBuffer, data->commandPool, data->queue);
+  assert(data->texture.textureImage);
+  assert(data->texture.textureImageMemory);
+
+  data->textureImageView = createTextureImageView(data->device, data->texture.textureImage, VK_FORMAT_R8G8B8A8_UNORM);
+  assert(data->textureImageView);
+
+  data->textureSampler = createTextureSampler(data->device);
+  assert(data->textureSampler);
+
   data->vertexBuffer = createVertexBuffer(data->device, data->physicalDevice, vertices, data->commandPool, data->queue);
   assert(data->vertexBuffer.buffer);
   assert(data->vertexBuffer.bufferMemory);
@@ -296,7 +333,8 @@ void Reignite::Application::initialize() {
   data->descriptorPool = createDescriptorPool(data->device, data->swapchain);
   assert(data->descriptorPool);
 
-  data->descriptorSets = createDescriptorSets(data->device, data->swapchain, data->descriptorPool, data->descriptorSetLayout, data->uniformBuffers);
+  data->descriptorSets = createDescriptorSets(data->device, data->swapchain, data->descriptorPool, 
+    data->descriptorSetLayout, data->uniformBuffers, data->textureImageView, data->textureSampler);
   for (size_t i = 0; i < data->descriptorSets.size(); ++i)
     assert(data->descriptorSets[i]);
 
@@ -318,6 +356,12 @@ void Reignite::Application::shutdown() {
   vkDestroyDescriptorPool(data->device, data->descriptorPool, nullptr);
 
   vkDestroyDescriptorSetLayout(data->device, data->descriptorSetLayout, nullptr);
+
+  vkDestroySampler(data->device, data->textureSampler, nullptr);
+  vkDestroyImageView(data->device, data->textureImageView, nullptr);
+
+  vkDestroyImage(data->device, data->texture.textureImage, nullptr);
+  vkFreeMemory(data->device, data->texture.textureImageMemory, nullptr);
 
   destroyBuffer(data->device, data->vertexBuffer);
   destroyBuffer(data->device, data->indexBuffer);

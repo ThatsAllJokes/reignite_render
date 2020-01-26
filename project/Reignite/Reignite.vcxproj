@@ -61,7 +61,7 @@
     <ClCompile>
       <AdditionalOptions>  %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;..\..\extern\glm\glm;..\..\extern\volk;..\..\extern\spdlog\include;..\..\extern\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;..\..\extern\glfw\include;..\..\extern\glm\glm;..\..\extern\spdlog\include;..\..\extern\stb;..\..\extern\volk;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;RI_PLATFORM_WINDOWS;RI_BUILD_DLL;RI_DEBUG;_WIN32;_GLFW_WIN32;GLFW_EXPOSE_NATIVE_WIN32;VK_USE_PLATFORM_WIN32_KHR;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -76,7 +76,7 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32_LEAN_AND_MEAN;NOMINMAX;RI_PLATFORM_WINDOWS;RI_BUILD_DLL;RI_DEBUG;_WIN32;_GLFW_WIN32;GLFW_EXPOSE_NATIVE_WIN32;VK_USE_PLATFORM_WIN32_KHR;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;..\..\extern\glm\glm;..\..\extern\volk;..\..\extern\spdlog\include;..\..\extern\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;..\..\extern\glfw\include;..\..\extern\glm\glm;..\..\extern\spdlog\include;..\..\extern\stb;..\..\extern\volk;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -96,7 +96,7 @@
     <ClCompile>
       <AdditionalOptions>  %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;..\..\extern\glm\glm;..\..\extern\volk;..\..\extern\spdlog\include;..\..\extern\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;..\..\extern\glfw\include;..\..\extern\glm\glm;..\..\extern\spdlog\include;..\..\extern\stb;..\..\extern\volk;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>RI_PLATFORM_WINDOWS;RI_BUILD_DLL;RI_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -110,7 +110,7 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>RI_PLATFORM_WINDOWS;RI_BUILD_DLL;RI_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;..\..\extern\glm\glm;..\..\extern\volk;..\..\extern\spdlog\include;..\..\extern\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)\Include;..\..\extern\glfw\include;..\..\extern\glm\glm;..\..\extern\spdlog\include;..\..\extern\stb;..\..\extern\volk;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -357,6 +357,7 @@
     <ClInclude Include="..\..\extern\glm\glm\gtx\vector_query.hpp" />
     <ClInclude Include="..\..\extern\glm\glm\gtx\vec_swizzle.hpp" />
     <ClInclude Include="..\..\extern\glm\glm\gtx\wrap.hpp" />
+    <ClInclude Include="..\..\extern\stb\stb_image.h" />
     <ClInclude Include="src\reignite.h" />
     <ClInclude Include="src\Reignite\application.h" />
     <ClInclude Include="src\Reignite\basic_types.h" />

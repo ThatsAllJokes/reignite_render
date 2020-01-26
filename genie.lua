@@ -18,6 +18,7 @@ project "Reignite"
   files {
     "extern/glm/glm/**.hpp",
     "extern/volk/volk.c",
+    "extern/stb/stb_image.h",
     "project/Reignite/src/**.h",
     "project/Reignite/src/**.cpp",
     "project/Reignite/src/Commands/**.h",
@@ -29,10 +30,11 @@ project "Reignite"
 
   includedirs {
     "$(VULKAN_SDK)\\Include",
+    "extern/glfw/include",
     "extern/glm/glm",
-    "extern/volk",
     "extern/spdlog/include",
-    "extern/glfw/include"
+    "extern/stb",
+    "extern/volk",
   }
 
   links {

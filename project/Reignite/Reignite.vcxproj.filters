@@ -25,6 +25,9 @@
     <Filter Include="extern\volk">
       <UniqueIdentifier>{F36F17BB-5F25-90B0-E819-8A8754CE86B4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="extern\stb">
+      <UniqueIdentifier>{6092A3E6-4C4A-E533-B551-BE8FA1288024}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src">
       <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
     </Filter>
@@ -743,6 +746,9 @@
     </ClInclude>
     <ClInclude Include="..\..\extern\glm\glm\gtx\wrap.hpp">
       <Filter>extern\glm\glm\gtx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\extern\stb\stb_image.h">
+      <Filter>extern\stb</Filter>
     </ClInclude>
     <ClInclude Include="src\reignite.h">
       <Filter>src</Filter>
