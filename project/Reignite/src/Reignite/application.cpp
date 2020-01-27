@@ -73,6 +73,11 @@ struct Reignite::Application::GFXData {
   Swapchain swapchain;
 
   VkCommandPool commandPool;
+
+  VkImage depthImage;
+  VkDeviceMemory depthImageMemory;
+  VkImageView depthImageView;
+
   Texture texture;
   VkImageView textureImageView;
   VkSampler textureSampler;
@@ -159,7 +164,7 @@ void Reignite::Application::Run() {
 
     render_context->submitDisplayList();
 
-    resizeSwapchainIfNecessary(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass);
+    resizeSwapchainIfNecessary(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass, data->depthImageView);
 
     uint32_t imageIndex = 0;
     VK_CHECK(vkAcquireNextImageKHR(data->device, data->swapchain.swapchain, ~0ull, data->acquireSemaphore, VK_NULL_HANDLE, &imageIndex));
@@ -175,15 +180,17 @@ void Reignite::Application::Run() {
     vkCmdPipelineBarrier(data->commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, 1, &renderBeginBarrier);
 
     VkClearColorValue color = { 48.f / 255.f, 10.f / 255.f, 36.f / 255.f, 1 };
-    VkClearValue clearColor = { color };
+    std::array<VkClearValue, 2> clearValues = {};
+    clearValues[0].color = color;
+    clearValues[1].depthStencil = { 1.0f, 0 };
 
     VkRenderPassBeginInfo passbeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
     passbeginInfo.renderPass = data->renderPass;
     passbeginInfo.framebuffer = data->swapchain.framebuffers[imageIndex];
     passbeginInfo.renderArea.extent.width = data->swapchain.width;
     passbeginInfo.renderArea.extent.height = data->swapchain.height;
-    passbeginInfo.clearValueCount = 1;
-    passbeginInfo.pClearValues = &clearColor;
+    passbeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    passbeginInfo.pClearValues = clearValues.data();
 
     vkCmdBeginRenderPass(data->commandBuffer, &passbeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -284,7 +291,7 @@ void Reignite::Application::initialize() {
   data->queue = 0;
   vkGetDeviceQueue(data->device, data->familyIndex, 0, &data->queue);
 
-  data->renderPass = createRenderPass(data->device, data->swapchainFormat);
+  data->renderPass = createRenderPass(data->device, data->physicalDevice, data->swapchainFormat);
   assert(data->renderPass);
 
   data->triangleVS = loadShader(data->device, "../shaders/basic.vert.spv");
@@ -304,7 +311,10 @@ void Reignite::Application::initialize() {
   data->trianglePipeline = createGraphicsPipeline(data->device, data->pipelineCache, data->renderPass, data->triangleVS, data->triangleFS, data->triangleLayout);
   assert(data->trianglePipeline);
 
-  createSwapchain(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass);
+  CreateDepthResources(data->device, data->physicalDevice, data->swapchain, data->depthImage, 
+    data->depthImageMemory, data->depthImageView);
+
+  createSwapchain(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass, data->depthImageView);
 
   data->commandPool = createCommandPool(data->device, data->familyIndex);
   assert(data->commandPool);
@@ -348,6 +358,9 @@ void Reignite::Application::shutdown() {
 
   vkDestroyCommandPool(data->device, data->commandPool, 0);
 
+  vkDestroyImageView(data->device, data->depthImageView, nullptr);
+  vkDestroyImage(data->device, data->depthImage, nullptr);
+  vkFreeMemory(data->device, data->depthImageMemory, nullptr);
   destroySwapchain(data->device, data->swapchain);
 
   for (size_t i = 0; i < data->swapchain.images.size(); ++i)

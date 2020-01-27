@@ -306,30 +306,55 @@ uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, Vk
   throw std::runtime_error("Failed to find suitable memory type!");
 }
 
-VkRenderPass createRenderPass(VkDevice device, VkFormat format) {
+VkFormat FindDepthFormat(VkPhysicalDevice physicalDevice); // Forward declaration of some functionality
 
-  VkAttachmentDescription attachments[1] = {};
-  attachments[0].format = format;
-  attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
-  attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-  attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-  attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  attachments[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  attachments[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+VkRenderPass createRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, VkFormat format) {
 
-  VkAttachmentReference colorAttachments = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
+  VkAttachmentDescription colorAttachment = {};
+  colorAttachment.format = format;
+  colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+ 
+  VkAttachmentDescription depthAttachment = {};
+  depthAttachment.format = FindDepthFormat(physicalDevice);
+  depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+  VkAttachmentReference colorAttachmentRef = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
+  VkAttachmentReference depthAttachmentRef = { 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
 
   VkSubpassDescription subpass = {};
   subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
   subpass.colorAttachmentCount = 1;
-  subpass.pColorAttachments = &colorAttachments;
+  subpass.pColorAttachments = &colorAttachmentRef;
+  subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
+  VkSubpassDependency dependency = {};
+  dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+  dependency.dstSubpass = 0;
+  dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  dependency.srcAccessMask = 0;
+  dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+  std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
   VkRenderPassCreateInfo createInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
-  createInfo.attachmentCount = sizeof(attachments) / sizeof(attachments[0]);
-  createInfo.pAttachments = attachments;
+  createInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+  createInfo.pAttachments = attachments.data();
   createInfo.subpassCount = 1;
   createInfo.pSubpasses = &subpass;
+  createInfo.dependencyCount = 1;
+  createInfo.pDependencies = &dependency;
 
   VkRenderPass renderPass = 0;
   VK_CHECK(vkCreateRenderPass(device, &createInfo, 0, &renderPass));
@@ -337,13 +362,15 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat format) {
   return renderPass;
 }
 
-VkFramebuffer createFramebuffer(VkDevice device, VkRenderPass renderPass, VkImageView imageView, uint32_t width, uint32_t height) {
+VkFramebuffer createFramebuffer(VkDevice device, VkRenderPass renderPass, 
+  VkImageView imageView, VkImageView depthImageView, uint32_t width, uint32_t height) {
+
+  std::array<VkImageView, 2> attachments = { imageView, depthImageView };
 
   VkFramebufferCreateInfo createInfo = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
-
   createInfo.renderPass = renderPass;
-  createInfo.attachmentCount = 1;
-  createInfo.pAttachments = &imageView;
+  createInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+  createInfo.pAttachments = attachments.data();
   createInfo.width = width;
   createInfo.height = height;
   createInfo.layers = 1;
@@ -354,13 +381,13 @@ VkFramebuffer createFramebuffer(VkDevice device, VkRenderPass renderPass, VkImag
   return framebuffer;
 }
 
-VkImageView createImageView(VkDevice device, VkImage image, VkFormat format) {
+VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
 
   VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
   createInfo.image = image;
   createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
   createInfo.format = format;
-  createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  createInfo.subresourceRange.aspectMask = aspectFlags;
   createInfo.subresourceRange.baseMipLevel = 0;
   createInfo.subresourceRange.levelCount = 1;
   createInfo.subresourceRange.baseArrayLayer = 0;
@@ -528,6 +555,15 @@ VkPipeline createGraphicsPipeline(VkDevice device, VkPipelineCache pipelineCache
   createInfo.pMultisampleState = &multisampleState;
 
   VkPipelineDepthStencilStateCreateInfo depthstencilState = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+  depthstencilState.depthTestEnable = VK_TRUE;
+  depthstencilState.depthWriteEnable = VK_TRUE;
+  depthstencilState.depthCompareOp = VK_COMPARE_OP_LESS;
+  depthstencilState.depthBoundsTestEnable = VK_FALSE;
+  depthstencilState.minDepthBounds = 0.0f;
+  depthstencilState.maxDepthBounds = 1.0f;
+  depthstencilState.stencilTestEnable = VK_FALSE;
+  depthstencilState.front = {};
+  depthstencilState.back = {};
   createInfo.pDepthStencilState = &depthstencilState;
 
   VkPipelineColorBlendAttachmentState colorAttachmentState = { };
@@ -586,7 +622,7 @@ struct Swapchain {
 };
 
 void createSwapchain(Swapchain& result, VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface,
-  uint32_t familyIndex, VkFormat format, VkRenderPass renderPass, VkSwapchainKHR oldSwapchain = 0) {
+  uint32_t familyIndex, VkFormat format, VkRenderPass renderPass, VkImageView depthImageView, VkSwapchainKHR oldSwapchain = 0) {
 
   VkSurfaceCapabilitiesKHR surfaceCaps;
   VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCaps));
@@ -605,13 +641,13 @@ void createSwapchain(Swapchain& result, VkPhysicalDevice physicalDevice, VkDevic
 
   std::vector<VkImageView> imageViews(imageCount);
   for (uint32_t i = 0; i < imageCount; ++i) {
-    imageViews[i] = createImageView(device, images[i], format);
+    imageViews[i] = createImageView(device, images[i], format, VK_IMAGE_ASPECT_COLOR_BIT);
     assert(imageViews[i]);
   }
 
   std::vector<VkFramebuffer> framebuffers(imageCount);
   for (uint32_t i = 0; i < imageCount; ++i) {
-    framebuffers[i] = createFramebuffer(device, renderPass, imageViews[i], width, height);
+    framebuffers[i] = createFramebuffer(device, renderPass, imageViews[i], depthImageView, width, height);
     assert(framebuffers[i]);
   }
 
@@ -639,7 +675,8 @@ void destroySwapchain(VkDevice device, const Swapchain& swapchain) {
 // TODO: Check uniform buffers recreation when modifying swapchain
 // TODO: Check description pool recreation when modifying swapchain
 void resizeSwapchainIfNecessary(Swapchain& result, VkPhysicalDevice physicalDevice,
-  VkDevice device, VkSurfaceKHR surface, uint32_t familyIndex, VkFormat format, VkRenderPass renderPass) {
+  VkDevice device, VkSurfaceKHR surface, uint32_t familyIndex, VkFormat format, 
+  VkRenderPass renderPass, VkImageView depthImageView) {
 
   VkSurfaceCapabilitiesKHR surfaceCaps;
   VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCaps));
@@ -650,8 +687,10 @@ void resizeSwapchainIfNecessary(Swapchain& result, VkPhysicalDevice physicalDevi
   if (result.width == newWidth && result.height == newHeight)
     return;
 
+  // TODO: Check depth buffer resizing
+
   Swapchain old = result;
-  createSwapchain(result, physicalDevice, device, surface, familyIndex, format, renderPass, old.swapchain);
+  createSwapchain(result, physicalDevice, device, surface, familyIndex, format, renderPass, depthImageView, old.swapchain);
   VK_CHECK(vkDeviceWaitIdle(device));
   destroySwapchain(device, old);
 }
@@ -980,13 +1019,14 @@ void copyBufferToImage(VkDevice device, VkCommandPool commandPool, VkQueue graph
   EndSingleTimeCommands(device, commandBuffer, commandPool, graphicsQueue);
 }
 
-void createImage(VkDevice device, VkPhysicalDevice physicalDevice, Texture& texture, VkFormat format, 
-  VkImageTiling tiling,VkImageUsageFlags usage, VkMemoryPropertyFlags properties) {
+void createImage(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t width, uint32_t height,
+  VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+  VkImage& image, VkDeviceMemory& imageMemory) {
 
   VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
   imageInfo.imageType = VK_IMAGE_TYPE_2D;
-  imageInfo.extent.width = texture.width;
-  imageInfo.extent.height = texture.height;
+  imageInfo.extent.width = width;
+  imageInfo.extent.height = height;
   imageInfo.extent.depth = 1;
   imageInfo.mipLevels = 1;
   imageInfo.arrayLayers = 1;
@@ -997,18 +1037,18 @@ void createImage(VkDevice device, VkPhysicalDevice physicalDevice, Texture& text
   imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
   imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-  VK_CHECK(vkCreateImage(device, &imageInfo, nullptr, &texture.textureImage)); // TODO: Check for different supported formats
+  VK_CHECK(vkCreateImage(device, &imageInfo, nullptr, &image)); // TODO: Check for different supported formats
 
   VkMemoryRequirements memRequirements;
-  vkGetImageMemoryRequirements(device, texture.textureImage, &memRequirements);
+  vkGetImageMemoryRequirements(device, image, &memRequirements);
 
   VkMemoryAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
   allocInfo.allocationSize = memRequirements.size;
   allocInfo.memoryTypeIndex = findMemoryType(physicalDevice ,memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-  VK_CHECK(vkAllocateMemory(device, &allocInfo, nullptr, &texture.textureImageMemory));
+  VK_CHECK(vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory));
 
-  vkBindImageMemory(device, texture.textureImage, texture.textureImageMemory, 0);
+  vkBindImageMemory(device, image, imageMemory, 0);
 }
 
 Texture createTextureImage(VkDevice device, VkPhysicalDevice physicalDevice, Buffer& stagingBuffer,
@@ -1033,9 +1073,9 @@ Texture createTextureImage(VkDevice device, VkPhysicalDevice physicalDevice, Buf
   Texture textureImage;
   textureImage.width = texWidth;
   textureImage.height = texHeight;
-  createImage(device, physicalDevice, textureImage, VK_FORMAT_R8G8B8A8_UNORM,
+  createImage(device, physicalDevice, texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM,
     VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage.textureImage, textureImage.textureImageMemory);
 
   TransitionImageLayout(device, commandPool, graphicsQueue, textureImage.textureImage, VK_FORMAT_R8G8B8A8_UNORM,
     VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -1053,7 +1093,7 @@ Texture createTextureImage(VkDevice device, VkPhysicalDevice physicalDevice, Buf
 
 VkImageView createTextureImageView(VkDevice device, VkImage image, VkFormat format) {
 
-  return createImageView(device, image, format);
+  return createImageView(device, image, format, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
 VkSampler createTextureSampler(VkDevice device) {
@@ -1079,6 +1119,47 @@ VkSampler createTextureSampler(VkDevice device) {
   VK_CHECK(vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler));
   
   return textureSampler;
+}
+
+VkFormat FindSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates, 
+  VkImageTiling tiling,  VkFormatFeatureFlags features) {
+
+  for (VkFormat format : candidates) {
+    VkFormatProperties props;
+    vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
+
+    if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
+      return format;
+    }
+    else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
+      return format;
+    }
+  }
+
+  assert(!"Failed to find supported format");
+}
+
+VkFormat FindDepthFormat(VkPhysicalDevice physicalDevice) {
+
+  return FindSupportedFormat(physicalDevice, { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, 
+    VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
+bool HasStencilComponent(VkFormat format) {
+
+  return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+}
+
+void CreateDepthResources(VkDevice device, VkPhysicalDevice physicalDevice, const Swapchain& swapchain,
+  VkImage& depthImage, VkDeviceMemory& depthMemoryImage, VkImageView& depthImageView) {
+
+  VkFormat depthFormat = FindDepthFormat(physicalDevice);
+
+  createImage(device, physicalDevice, 1280, 720, depthFormat, VK_IMAGE_TILING_OPTIMAL, // TODO: Fix hard-coded size values
+    VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    depthImage, depthMemoryImage);
+
+  depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 #endif // _VULKAN_IMPL_
