@@ -324,10 +324,10 @@ void Reignite::Application::initialize() {
   assert(data->texture.textureImage);
   assert(data->texture.textureImageMemory);
 
-  data->textureImageView = createTextureImageView(data->device, data->texture.textureImage, VK_FORMAT_R8G8B8A8_UNORM);
+  data->textureImageView = createTextureImageView(data->device, data->texture.textureImage, VK_FORMAT_R8G8B8A8_UNORM, data->texture.mipLevels);
   assert(data->textureImageView);
 
-  data->textureSampler = createTextureSampler(data->device);
+  data->textureSampler = createTextureSampler(data->device, data->texture.mipLevels);
   assert(data->textureSampler);
 
   data->vertexBuffer = createVertexBuffer(data->device, data->physicalDevice, vertices, data->commandPool, data->queue);
