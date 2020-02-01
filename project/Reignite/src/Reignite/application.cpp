@@ -74,12 +74,9 @@ struct Reignite::Application::GFXData {
 
   VkCommandPool commandPool;
 
-  VkImage depthImage;
-  VkDeviceMemory depthImageMemory;
-  VkImageView depthImageView;
+  Image depthImage;
 
-  Texture texture;
-  VkImageView textureImageView;
+  Image texture;
   VkSampler textureSampler;
 
   Buffer vertexBuffer;
@@ -164,7 +161,7 @@ void Reignite::Application::Run() {
 
     render_context->submitDisplayList();
 
-    resizeSwapchainIfNecessary(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass, data->depthImageView);
+    resizeSwapchainIfNecessary(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass, data->depthImage.imageView);
 
     uint32_t imageIndex = 0;
     VK_CHECK(vkAcquireNextImageKHR(data->device, data->swapchain.swapchain, ~0ull, data->acquireSemaphore, VK_NULL_HANDLE, &imageIndex));
@@ -311,21 +308,19 @@ void Reignite::Application::initialize() {
   data->trianglePipeline = createGraphicsPipeline(data->device, data->pipelineCache, data->renderPass, data->triangleVS, data->triangleFS, data->triangleLayout);
   assert(data->trianglePipeline);
 
-  CreateDepthResources(data->device, data->physicalDevice, data->swapchain, data->depthImage, 
-    data->depthImageMemory, data->depthImageView);
+  CreateDepthResources(data->device, data->physicalDevice, data->swapchain, data->depthImage);
 
-  createSwapchain(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass, data->depthImageView);
+  createSwapchain(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass, data->depthImage.imageView);
 
   data->commandPool = createCommandPool(data->device, data->familyIndex);
   assert(data->commandPool);
 
-  Buffer tmpBuffer = {}; // Buffer memory is deleted inside createTextureImage
-  data->texture = createTextureImage(data->device, data->physicalDevice, tmpBuffer, data->commandPool, data->queue);
-  assert(data->texture.textureImage);
-  assert(data->texture.textureImageMemory);
+  data->texture = createTextureImage(data->device, data->physicalDevice, data->commandPool, data->queue);
+  assert(data->texture.image);
+  assert(data->texture.imageMemory);
 
-  data->textureImageView = createTextureImageView(data->device, data->texture.textureImage, VK_FORMAT_R8G8B8A8_UNORM, data->texture.mipLevels);
-  assert(data->textureImageView);
+  data->texture.imageView = createTextureImageView(data->device, data->texture.image, VK_FORMAT_R8G8B8A8_UNORM, data->texture.mipLevels);
+  assert(data->texture.imageView);
 
   data->textureSampler = createTextureSampler(data->device, data->texture.mipLevels);
   assert(data->textureSampler);
@@ -344,7 +339,7 @@ void Reignite::Application::initialize() {
   assert(data->descriptorPool);
 
   data->descriptorSets = createDescriptorSets(data->device, data->swapchain, data->descriptorPool, 
-    data->descriptorSetLayout, data->uniformBuffers, data->textureImageView, data->textureSampler);
+    data->descriptorSetLayout, data->uniformBuffers, data->texture.imageView, data->textureSampler);
   for (size_t i = 0; i < data->descriptorSets.size(); ++i)
     assert(data->descriptorSets[i]);
 
@@ -358,9 +353,7 @@ void Reignite::Application::shutdown() {
 
   vkDestroyCommandPool(data->device, data->commandPool, 0);
 
-  vkDestroyImageView(data->device, data->depthImageView, nullptr);
-  vkDestroyImage(data->device, data->depthImage, nullptr);
-  vkFreeMemory(data->device, data->depthImageMemory, nullptr);
+  DestroyImage(data->device, data->depthImage);
   destroySwapchain(data->device, data->swapchain);
 
   for (size_t i = 0; i < data->swapchain.images.size(); ++i)
@@ -371,10 +364,8 @@ void Reignite::Application::shutdown() {
   vkDestroyDescriptorSetLayout(data->device, data->descriptorSetLayout, nullptr);
 
   vkDestroySampler(data->device, data->textureSampler, nullptr);
-  vkDestroyImageView(data->device, data->textureImageView, nullptr);
 
-  vkDestroyImage(data->device, data->texture.textureImage, nullptr);
-  vkFreeMemory(data->device, data->texture.textureImageMemory, nullptr);
+  DestroyImage(data->device, data->texture);
 
   destroyBuffer(data->device, data->vertexBuffer);
   destroyBuffer(data->device, data->indexBuffer);

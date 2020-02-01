@@ -208,8 +208,8 @@ VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint
 VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window) {
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
   VkWin32SurfaceCreateInfoKHR createInfo = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
-  createInfo.hinstance = GetModuleHandle(0);
   createInfo.hwnd = glfwGetWin32Window(window);
+  createInfo.hinstance = GetModuleHandle(0);
 
   VkSurfaceKHR surface = 0;
   VK_CHECK(vkCreateWin32SurfaceKHR(instance, &createInfo, 0, &surface));
@@ -992,15 +992,16 @@ void TransitionImageLayout(VkDevice device, VkCommandPool commandPool, VkQueue g
   EndSingleTimeCommands(device, commandBuffer, commandPool, graphicsQueue);
 }
 
-struct Texture {
-  VkImage textureImage;
-  VkDeviceMemory textureImageMemory;
+struct Image {
+  VkImage image;
+  VkImageView imageView;
+  VkDeviceMemory imageMemory;
   uint32_t width, height;
   uint32_t mipLevels;
 };
 
 void copyBufferToImage(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue, 
-  Buffer& buffer, Texture& texture) {
+  Buffer& buffer, Image& texture) {
 
   VkCommandBuffer commandBuffer = BeginSingleTimeCommands(device, commandPool);
 
@@ -1015,7 +1016,7 @@ void copyBufferToImage(VkDevice device, VkCommandPool commandPool, VkQueue graph
   region.imageOffset = { 0, 0, 0 };
   region.imageExtent = { texture.width, texture.height, 1 };
 
-  vkCmdCopyBufferToImage(commandBuffer, buffer.buffer, texture.textureImage,
+  vkCmdCopyBufferToImage(commandBuffer, buffer.buffer, texture.image,
     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
   EndSingleTimeCommands(device, commandBuffer, commandPool, graphicsQueue);
@@ -1051,6 +1052,13 @@ void createImage(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t widt
   VK_CHECK(vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory));
 
   vkBindImageMemory(device, image, imageMemory, 0);
+}
+
+void DestroyImage(VkDevice device, Image& image) {
+
+  vkDestroyImageView(device, image.imageView, nullptr);
+  vkFreeMemory(device, image.imageMemory, nullptr);
+  vkDestroyImage(device, image.image, nullptr);
 }
 
 void generateMipmaps(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, 
@@ -1132,8 +1140,7 @@ void generateMipmaps(VkDevice device, VkPhysicalDevice physicalDevice, VkCommand
   EndSingleTimeCommands(device, commandBuffer, commandPool, graphicsQueue);
 }
 
-Texture createTextureImage(VkDevice device, VkPhysicalDevice physicalDevice, Buffer& stagingBuffer,
-  VkCommandPool commandPool, VkQueue graphicsQueue) { // TODO: Create buffer parameter inside definition
+Image createTextureImage(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue) {
 
   int texWidth, texHeight, texChannels;
   stbi_uc* pixels = stbi_load("../textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
@@ -1143,6 +1150,7 @@ Texture createTextureImage(VkDevice device, VkPhysicalDevice physicalDevice, Buf
   VkDeviceSize imageSize = texWidth * texHeight * 4;
   assert(pixels);
 
+  Buffer stagingBuffer;
   createBuffer(device, physicalDevice, stagingBuffer, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
@@ -1153,15 +1161,16 @@ Texture createTextureImage(VkDevice device, VkPhysicalDevice physicalDevice, Buf
 
   stbi_image_free(pixels);
 
-  Texture textureImage;
+  Image textureImage;
   textureImage.width = texWidth;
   textureImage.height = texHeight;
   textureImage.mipLevels = mipLevels;
+
   createImage(device, physicalDevice, texWidth, texHeight, mipLevels, VK_FORMAT_R8G8B8A8_UNORM,
     VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage.textureImage, textureImage.textureImageMemory);
+    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage.image, textureImage.imageMemory);
 
-  TransitionImageLayout(device, commandPool, graphicsQueue, textureImage.textureImage, VK_FORMAT_R8G8B8A8_UNORM,
+  TransitionImageLayout(device, commandPool, graphicsQueue, textureImage.image, VK_FORMAT_R8G8B8A8_UNORM,
     VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
 
   copyBufferToImage(device, commandPool, graphicsQueue, stagingBuffer, textureImage);
@@ -1172,7 +1181,7 @@ Texture createTextureImage(VkDevice device, VkPhysicalDevice physicalDevice, Buf
   vkDestroyBuffer(device, stagingBuffer.buffer, nullptr);
   vkFreeMemory(device, stagingBuffer.bufferMemory, nullptr);
 
-  generateMipmaps(device, physicalDevice, commandPool, graphicsQueue, textureImage.textureImage,
+  generateMipmaps(device, physicalDevice, commandPool, graphicsQueue, textureImage.image,
     VK_FORMAT_R8G8B8A8_UNORM, texWidth, texHeight, mipLevels);
 
   return textureImage;
@@ -1199,7 +1208,7 @@ VkSampler createTextureSampler(VkDevice device, uint32_t mipLevels) {
   samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
   samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
   samplerInfo.mipLodBias = 0.0f;
-  samplerInfo.minLod = static_cast<float>(mipLevels / 2);
+  samplerInfo.minLod = 0; // static_cast<float>(mipLevels / 2);
   samplerInfo.maxLod = static_cast<float>(mipLevels);
 
   VkSampler textureSampler;
@@ -1237,16 +1246,16 @@ bool HasStencilComponent(VkFormat format) {
   return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
-void CreateDepthResources(VkDevice device, VkPhysicalDevice physicalDevice, const Swapchain& swapchain,
-  VkImage& depthImage, VkDeviceMemory& depthMemoryImage, VkImageView& depthImageView) {
+void CreateDepthResources(VkDevice device, VkPhysicalDevice physicalDevice, 
+  const Swapchain& swapchain, Image& depthImage) {
 
   VkFormat depthFormat = FindDepthFormat(physicalDevice);
 
   createImage(device, physicalDevice, 1280, 720, 1, depthFormat, VK_IMAGE_TILING_OPTIMAL, // TODO: Fix hard-coded size values
     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-    depthImage, depthMemoryImage);
+    depthImage.image, depthImage.imageMemory);
 
-  depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+  depthImage.imageView = createImageView(device, depthImage.image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
 }
 
 #endif // _VULKAN_IMPL_
