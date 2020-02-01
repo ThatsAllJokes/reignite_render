@@ -622,8 +622,9 @@ struct Swapchain {
   uint32_t imageCount;
 };
 
-void createSwapchain(Swapchain& result, VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface,
-  uint32_t familyIndex, VkFormat format, VkRenderPass renderPass, VkImageView depthImageView, VkSwapchainKHR oldSwapchain = 0) {
+void createSwapchain(Swapchain& result, VkPhysicalDevice physicalDevice, VkDevice device, 
+  VkSurfaceKHR surface, uint32_t familyIndex, VkFormat format, VkRenderPass renderPass, 
+  VkImageView depthImageView, VkSwapchainKHR oldSwapchain = 0) {
 
   VkSurfaceCapabilitiesKHR surfaceCaps;
   VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCaps));

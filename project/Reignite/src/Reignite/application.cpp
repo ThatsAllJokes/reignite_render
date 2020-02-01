@@ -161,7 +161,8 @@ void Reignite::Application::Run() {
 
     render_context->submitDisplayList();
 
-    resizeSwapchainIfNecessary(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass, data->depthImage.imageView);
+    // TODO: Check resize functionality
+    //resizeSwapchainIfNecessary(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass, data->depthImage.imageView);
 
     uint32_t imageIndex = 0;
     VK_CHECK(vkAcquireNextImageKHR(data->device, data->swapchain.swapchain, ~0ull, data->acquireSemaphore, VK_NULL_HANDLE, &imageIndex));
@@ -176,9 +177,9 @@ void Reignite::Application::Run() {
     VkImageMemoryBarrier renderBeginBarrier = imageBarrier(data->swapchain.images[imageIndex], 0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     vkCmdPipelineBarrier(data->commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, 1, &renderBeginBarrier);
 
-    VkClearColorValue color = { 48.f / 255.f, 10.f / 255.f, 36.f / 255.f, 1 };
+    VkClearColorValue clearColor = { 48.f / 255.f, 10.f / 255.f, 36.f / 255.f, 1 };
     std::array<VkClearValue, 2> clearValues = {};
-    clearValues[0].color = color;
+    clearValues[0].color = clearColor;
     clearValues[1].depthStencil = { 1.0f, 0 };
 
     VkRenderPassBeginInfo passbeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
@@ -186,6 +187,7 @@ void Reignite::Application::Run() {
     passbeginInfo.framebuffer = data->swapchain.framebuffers[imageIndex];
     passbeginInfo.renderArea.extent.width = data->swapchain.width;
     passbeginInfo.renderArea.extent.height = data->swapchain.height;
+    passbeginInfo.renderArea.offset = { 0, 0 };
     passbeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
     passbeginInfo.pClearValues = clearValues.data();
 
@@ -217,26 +219,30 @@ void Reignite::Application::Run() {
 
     VK_CHECK(vkEndCommandBuffer(data->commandBuffer));
 
-    VkPipelineStageFlags submitStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
     updateUniformBuffer(data->device, data->uniformBuffers, imageIndex);
+
+    VkSemaphore waitSemaphores[] = { data->acquireSemaphore };
+    VkSemaphore signalSemaphores[] = { data->releaseSemaphore };
+    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
     VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
     submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = &data->acquireSemaphore;
-    submitInfo.pWaitDstStageMask = &submitStageMask;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &data->commandBuffer;
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &data->releaseSemaphore;
+    submitInfo.pSignalSemaphores = signalSemaphores;
 
     VK_CHECK(vkQueueSubmit(data->queue, 1, &submitInfo, VK_NULL_HANDLE));
 
+    VkSwapchainKHR swapChains[] = { data->swapchain.swapchain };
+
     VkPresentInfoKHR presentInfo = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &data->releaseSemaphore;
+    presentInfo.pWaitSemaphores = signalSemaphores;
     presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &data->swapchain.swapchain;
+    presentInfo.pSwapchains = swapChains;
     presentInfo.pImageIndices = &imageIndex;
 
     VK_CHECK(vkQueuePresentKHR(data->queue, &presentInfo));
@@ -315,6 +321,9 @@ void Reignite::Application::initialize() {
   data->commandPool = createCommandPool(data->device, data->familyIndex);
   assert(data->commandPool);
 
+  data->commandBuffer = createCommandBuffer(data->device, data->commandPool);
+  assert(data->commandBuffer);
+
   data->texture = createTextureImage(data->device, data->physicalDevice, data->commandPool, data->queue);
   assert(data->texture.image);
   assert(data->texture.imageMemory);
@@ -342,9 +351,6 @@ void Reignite::Application::initialize() {
     data->descriptorSetLayout, data->uniformBuffers, data->texture.imageView, data->textureSampler);
   for (size_t i = 0; i < data->descriptorSets.size(); ++i)
     assert(data->descriptorSets[i]);
-
-  data->commandBuffer = createCommandBuffer(data->device, data->commandPool);
-  assert(data->commandBuffer);
 }
 
 void Reignite::Application::shutdown() {
