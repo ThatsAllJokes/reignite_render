@@ -130,7 +130,26 @@ bool supportsPresentation(VkPhysicalDevice physicalDevice, uint32_t familyIndex)
 #endif
 }
 
-VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t physicalDeviceCount) {
+VkSampleCountFlagBits getMaxUsableSampleCount(VkPhysicalDevice physicalDevice) {
+  VkPhysicalDeviceProperties physicalDeviceProperties;
+  vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
+
+  VkSampleCountFlags counts =
+    physicalDeviceProperties.limits.framebufferColorSampleCounts &
+    physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+
+  if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
+  if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
+  if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
+  if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
+  if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
+  if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
+
+  return VK_SAMPLE_COUNT_1_BIT;
+}
+
+VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t physicalDeviceCount,
+  VkSampleCountFlagBits& msaaSamples) {
 
   VkPhysicalDevice discrete = 0;
   VkPhysicalDevice fallback = 0;
@@ -164,6 +183,7 @@ VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t 
 
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(result, &props);
+    msaaSamples = getMaxUsableSampleCount(result);
     RI_INFO("Selected GPU: {0}\n", props.deviceName);
   }
   else {
@@ -308,21 +328,21 @@ uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, Vk
 
 VkFormat FindDepthFormat(VkPhysicalDevice physicalDevice); // Forward declaration of some functionality
 
-VkRenderPass createRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, VkFormat format) {
+VkRenderPass createRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, VkFormat format, VkSampleCountFlagBits msaaSamples) {
 
   VkAttachmentDescription colorAttachment = {};
   colorAttachment.format = format;
-  colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  colorAttachment.samples = msaaSamples;
   colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
   colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
   colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
  
   VkAttachmentDescription depthAttachment = {};
   depthAttachment.format = FindDepthFormat(physicalDevice);
-  depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  depthAttachment.samples = msaaSamples;
   depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
   depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -330,14 +350,26 @@ VkRenderPass createRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, 
   depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+  VkAttachmentDescription colorAttachmentResolve = {};
+  colorAttachmentResolve.format = format;
+  colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
+  colorAttachmentResolve.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
   VkAttachmentReference colorAttachmentRef = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
   VkAttachmentReference depthAttachmentRef = { 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
+  VkAttachmentReference colorAttachmentResolveRef = { 2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
 
   VkSubpassDescription subpass = {};
   subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
   subpass.colorAttachmentCount = 1;
   subpass.pColorAttachments = &colorAttachmentRef;
   subpass.pDepthStencilAttachment = &depthAttachmentRef;
+  subpass.pResolveAttachments = &colorAttachmentResolveRef;
 
   VkSubpassDependency dependency = {};
   dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -347,7 +379,9 @@ VkRenderPass createRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, 
   dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
   dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-  std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
+  std::array<VkAttachmentDescription, 3> attachments = { 
+    colorAttachment, depthAttachment, colorAttachmentResolve };
+  
   VkRenderPassCreateInfo createInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
   createInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
   createInfo.pAttachments = attachments.data();
@@ -362,10 +396,11 @@ VkRenderPass createRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, 
   return renderPass;
 }
 
-VkFramebuffer createFramebuffer(VkDevice device, VkRenderPass renderPass, 
-  VkImageView imageView, VkImageView depthImageView, uint32_t width, uint32_t height) {
+VkFramebuffer createFramebuffer(VkDevice device, VkRenderPass renderPass,
+  VkImageView imageView, VkImageView depthImageView, VkImageView colorImageView, 
+  uint32_t width, uint32_t height) {
 
-  std::array<VkImageView, 2> attachments = { imageView, depthImageView };
+  std::array<VkImageView, 3> attachments = { colorImageView, depthImageView, imageView };
 
   VkFramebufferCreateInfo createInfo = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
   createInfo.renderPass = renderPass;
@@ -509,7 +544,8 @@ VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device) {
   return descriptorSetLayout;
 }
 
-VkPipeline createGraphicsPipeline(VkDevice device, VkPipelineCache pipelineCache, VkRenderPass renderPass, VkShaderModule vs, VkShaderModule fs, VkPipelineLayout layout) {
+VkPipeline createGraphicsPipeline(VkDevice device, VkPipelineCache pipelineCache, VkRenderPass renderPass, 
+  VkShaderModule vs, VkShaderModule fs, VkPipelineLayout layout, VkSampleCountFlagBits msaaSamples) {
 
   VkGraphicsPipelineCreateInfo createInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 
@@ -552,7 +588,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, VkPipelineCache pipelineCache
   createInfo.pRasterizationState = &rasterizationState;
 
   VkPipelineMultisampleStateCreateInfo multisampleState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-  multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+  multisampleState.rasterizationSamples = msaaSamples;
   createInfo.pMultisampleState = &multisampleState;
 
   VkPipelineDepthStencilStateCreateInfo depthstencilState = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
@@ -624,7 +660,7 @@ struct Swapchain {
 
 void createSwapchain(Swapchain& result, VkPhysicalDevice physicalDevice, VkDevice device, 
   VkSurfaceKHR surface, uint32_t familyIndex, VkFormat format, VkRenderPass renderPass, 
-  VkImageView depthImageView, VkSwapchainKHR oldSwapchain = 0) {
+  VkImageView depthImageView, VkImageView colorImageView, VkSwapchainKHR oldSwapchain = 0) {
 
   VkSurfaceCapabilitiesKHR surfaceCaps;
   VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCaps));
@@ -649,7 +685,7 @@ void createSwapchain(Swapchain& result, VkPhysicalDevice physicalDevice, VkDevic
 
   std::vector<VkFramebuffer> framebuffers(imageCount);
   for (uint32_t i = 0; i < imageCount; ++i) {
-    framebuffers[i] = createFramebuffer(device, renderPass, imageViews[i], depthImageView, width, height);
+    framebuffers[i] = createFramebuffer(device, renderPass, imageViews[i], depthImageView, colorImageView, width, height);
     assert(framebuffers[i]);
   }
 
@@ -692,7 +728,7 @@ void resizeSwapchainIfNecessary(Swapchain& result, VkPhysicalDevice physicalDevi
   // TODO: Check depth buffer resizing
 
   Swapchain old = result;
-  createSwapchain(result, physicalDevice, device, surface, familyIndex, format, renderPass, depthImageView, old.swapchain);
+  //createSwapchain(result, physicalDevice, device, surface, familyIndex, format, renderPass, depthImageView, old.swapchain);
   VK_CHECK(vkDeviceWaitIdle(device));
   destroySwapchain(device, old);
 }
@@ -1024,8 +1060,8 @@ void copyBufferToImage(VkDevice device, VkCommandPool commandPool, VkQueue graph
 }
 
 void createImage(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t width, uint32_t height,
-  uint32_t mipLevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-  VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
+  uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, 
+  VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
 
   VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
   imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -1038,7 +1074,7 @@ void createImage(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t widt
   imageInfo.tiling = tiling;
   imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   imageInfo.usage = usage; // VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
-  imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+  imageInfo.samples = numSamples;
   imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
   VK_CHECK(vkCreateImage(device, &imageInfo, nullptr, &image)); // TODO: Check for different supported formats
@@ -1167,7 +1203,7 @@ Image createTextureImage(VkDevice device, VkPhysicalDevice physicalDevice, VkCom
   textureImage.height = texHeight;
   textureImage.mipLevels = mipLevels;
 
-  createImage(device, physicalDevice, texWidth, texHeight, mipLevels, VK_FORMAT_R8G8B8A8_UNORM,
+  createImage(device, physicalDevice, texWidth, texHeight, mipLevels, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_UNORM,
     VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage.image, textureImage.imageMemory);
 
@@ -1248,15 +1284,27 @@ bool HasStencilComponent(VkFormat format) {
 }
 
 void CreateDepthResources(VkDevice device, VkPhysicalDevice physicalDevice, 
-  const Swapchain& swapchain, Image& depthImage) {
+  const Swapchain& swapchain, Image& depthImage, VkSampleCountFlagBits msaaSamples) {
 
   VkFormat depthFormat = FindDepthFormat(physicalDevice);
 
-  createImage(device, physicalDevice, 1280, 720, 1, depthFormat, VK_IMAGE_TILING_OPTIMAL, // TODO: Fix hard-coded size values
+  createImage(device, physicalDevice, 1280, 720, 1, msaaSamples, depthFormat, VK_IMAGE_TILING_OPTIMAL, // TODO: Fix hard-coded size values
     VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     depthImage.image, depthImage.imageMemory);
 
   depthImage.imageView = createImageView(device, depthImage.image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+}
+
+void CreateColorResources(VkDevice device, VkPhysicalDevice physicalDevice, const Swapchain& swapchain, 
+  Image& colorImage, VkFormat swapchainImageFormat, VkSampleCountFlagBits msaaSamples) {
+
+  VkFormat colorFormat = swapchainImageFormat;
+
+  createImage(device, physicalDevice, 1280, 720, 1, msaaSamples, colorFormat, VK_IMAGE_TILING_OPTIMAL,
+    VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 
+    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage.image, colorImage.imageMemory);
+
+  colorImage.imageView = createImageView(device, colorImage.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
 
 #endif // _VULKAN_IMPL_

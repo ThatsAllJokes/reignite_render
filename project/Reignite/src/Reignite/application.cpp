@@ -74,9 +74,11 @@ struct Reignite::Application::GFXData {
 
   VkCommandPool commandPool;
 
+  Image colorImage;
   Image depthImage;
-
   Image texture;
+
+  VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
   VkSampler textureSampler;
 
   Buffer vertexBuffer;
@@ -174,8 +176,8 @@ void Reignite::Application::Run() {
 
     VK_CHECK(vkBeginCommandBuffer(data->commandBuffer, &beginInfo));
 
-    VkImageMemoryBarrier renderBeginBarrier = imageBarrier(data->swapchain.images[imageIndex], 0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    vkCmdPipelineBarrier(data->commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, 1, &renderBeginBarrier);
+    //VkImageMemoryBarrier renderBeginBarrier = imageBarrier(data->swapchain.images[imageIndex], 0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    //vkCmdPipelineBarrier(data->commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, 1, &renderBeginBarrier);
 
     VkClearColorValue clearColor = { 48.f / 255.f, 10.f / 255.f, 36.f / 255.f, 1 };
     std::array<VkClearValue, 2> clearValues = {};
@@ -214,8 +216,8 @@ void Reignite::Application::Run() {
 
     vkCmdEndRenderPass(data->commandBuffer);
 
-    VkImageMemoryBarrier renderEndBarrier = imageBarrier(data->swapchain.images[imageIndex], VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-    vkCmdPipelineBarrier(data->commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, 1, &renderEndBarrier);
+    //VkImageMemoryBarrier renderEndBarrier = imageBarrier(data->swapchain.images[imageIndex], VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    //vkCmdPipelineBarrier(data->commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, 1, &renderEndBarrier);
 
     VK_CHECK(vkEndCommandBuffer(data->commandBuffer));
 
@@ -267,7 +269,7 @@ void Reignite::Application::initialize() {
   data->physicalDeviceCount = sizeof(data->physicalDevices) / sizeof(data->physicalDevices[0]);
   VK_CHECK(vkEnumeratePhysicalDevices(data->instance, &data->physicalDeviceCount, data->physicalDevices));
 
-  data->physicalDevice = pickPhysicalDevice(data->physicalDevices, data->physicalDeviceCount);
+  data->physicalDevice = pickPhysicalDevice(data->physicalDevices, data->physicalDeviceCount, data->msaaSamples);
   assert(data->physicalDevice);
 
   data->familyIndex = getGraphicsFamilyIndex(data->physicalDevice);
@@ -294,7 +296,7 @@ void Reignite::Application::initialize() {
   data->queue = 0;
   vkGetDeviceQueue(data->device, data->familyIndex, 0, &data->queue);
 
-  data->renderPass = createRenderPass(data->device, data->physicalDevice, data->swapchainFormat);
+  data->renderPass = createRenderPass(data->device, data->physicalDevice, data->swapchainFormat, data->msaaSamples);
   assert(data->renderPass);
 
   data->triangleVS = loadShader(data->device, "../shaders/basic.vert.spv");
@@ -311,12 +313,18 @@ void Reignite::Application::initialize() {
   data->triangleLayout = createPipelineLayout(data->device, data->descriptorSetLayout);
   assert(data->triangleLayout);
 
-  data->trianglePipeline = createGraphicsPipeline(data->device, data->pipelineCache, data->renderPass, data->triangleVS, data->triangleFS, data->triangleLayout);
+  data->trianglePipeline = createGraphicsPipeline(data->device, data->pipelineCache, 
+    data->renderPass, data->triangleVS, data->triangleFS, data->triangleLayout,data->msaaSamples);
   assert(data->trianglePipeline);
 
-  CreateDepthResources(data->device, data->physicalDevice, data->swapchain, data->depthImage);
+  CreateColorResources(data->device, data->physicalDevice, data->swapchain, data->colorImage, 
+    data->swapchainFormat, data->msaaSamples);
 
-  createSwapchain(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass, data->depthImage.imageView);
+  CreateDepthResources(data->device, data->physicalDevice, data->swapchain, data->depthImage, 
+    data->msaaSamples);
+
+  createSwapchain(data->swapchain, data->physicalDevice, data->device, data->surface, 
+    data->familyIndex, data->swapchainFormat, data->renderPass, data->depthImage.imageView, data->colorImage.imageView);
 
   data->commandPool = createCommandPool(data->device, data->familyIndex);
   assert(data->commandPool);
@@ -359,6 +367,7 @@ void Reignite::Application::shutdown() {
 
   vkDestroyCommandPool(data->device, data->commandPool, 0);
 
+  DestroyImage(data->device, data->colorImage);
   DestroyImage(data->device, data->depthImage);
   destroySwapchain(data->device, data->swapchain);
 
