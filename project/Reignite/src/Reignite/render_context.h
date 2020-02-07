@@ -1,6 +1,8 @@
 #ifndef _RENDER_CONTEXT_H_
 #define _RENDER_CONTEXT_H_ 1
 
+#include <memory>
+
 #include "core.h"
 #include "basic_types.h"
 
@@ -22,7 +24,7 @@ namespace Reignite {
   class REIGNITE_API RenderContext {
    public:
 
-    RenderContext(const State* state);
+    RenderContext(const std::shared_ptr<State> state);
     ~RenderContext();
 
     u32 createGeometry();
@@ -34,13 +36,13 @@ namespace Reignite {
 
    private:
 
-    void init(const State* state, const RenderContextParams& params = RenderContextParams());
+    void initialize(const std::shared_ptr<State> state, const RenderContextParams& params = RenderContextParams());
     void shutdown();
 
     RenderContext(const RenderContext&) = delete;
     RenderContext& operator=(const RenderContext&) = delete;
 
-    State* state;
+    std::shared_ptr<State> state;
     
     struct Data;
     Data* data;

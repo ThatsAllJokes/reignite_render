@@ -1,5 +1,10 @@
 #include "window.h"
 
+#include <string>
+
+#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
+
 #include "log.h"
 
 #include "Components/transform_component.h"
@@ -7,50 +12,54 @@
 
 namespace Reignite {
 
+  static bool s_glfw_initialized = false;
+
   struct State {
 
     std::string title;
     u16 width;
     u16 height;
 
+    GLFWwindow* window;
+
     std::vector<u32> indices;
 
     CameraComponent camera;
     std::vector<TransformComponent> transforms;
-    //std::vector<GeometryComponent> geometries;
-    //std::vector<MaterialComponent> materials;
-    //std::vector<RenderComponent> renders;
-
-    //std::vector<Geometry> db_geometries;
-    //std::vector<Material> db_materials;
-    //std::vector<Texture> db_textures;
 
     State(const std::string& t = "Reignite Render",
       u16 w = 1280, u16 h = 720) : title(t), width(w), height(h) {}
   };
 
-  static bool s_glfw_initialized = false;
+  struct Window::Data {
 
-  Window* Window::Create(const State* state) {
+    GLFWwindow* window;
+  };
+
+  Window* Window::Create(const std::shared_ptr<State> s) {
     
-    return new Window(state);
+    return new Window(s);
   }
 
-  Window::Window(const State* state) {
+  Window::Window(const std::shared_ptr<State> s) {
 
-    init(state);
+    data = new Data();
+
+    initialize(s);
   }
 
   Window::~Window() {
   
     shutdown();
+    
+    delete data;
   }
 
-  void Window::init(const State* p) {
+  void Window::initialize(const std::shared_ptr<State> state) {
 
-    state = (State*)p; // TODO: Resolve this on the future (I do not like this casts)
+    this->state = state; // TODO: Resolve this on the future (I do not like this casts)
 
-    RI_INFO("Creating window . . . {0}: ({1}, {2})", p->title, p->width, p->height);
+    RI_INFO("Creating window . . . {0}: ({1}, {2})", state->title, state->width, state->height);
 
     if(!s_glfw_initialized) {
     
@@ -61,16 +70,18 @@ namespace Reignite {
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    window = glfwCreateWindow((s16)p->width, (s16)p->height, p->title.c_str(), nullptr, nullptr);
-    assert(window);
+    data->window = glfwCreateWindow((s16)state->width, (s16)state->height, state->title.c_str(), nullptr, nullptr);
+    assert(data->window);
 
-    glfwMakeContextCurrent(window);
-    glfwSetWindowUserPointer(window, &state);
+    state->window = data->window;
+
+    glfwMakeContextCurrent(data->window);
+    glfwSetWindowUserPointer(data->window, nullptr);
   }
 
   void Window::shutdown() {
 
-    glfwDestroyWindow(window);
+    glfwDestroyWindow(data->window);
   }
 
   void Window::update() {
@@ -81,10 +92,12 @@ namespace Reignite {
 
   bool Window::closeWindow() {
 
-    return glfwWindowShouldClose(window);
+    return glfwWindowShouldClose(data->window);
   }
 
   inline const u16 Window::getWidth() { return state->width; }
 
   inline const u16 Window::getHeight() { return state->height; }
+
+  //inline GLFWwindow* const Window::GetCurrentWindow() { return data->window; }
 }

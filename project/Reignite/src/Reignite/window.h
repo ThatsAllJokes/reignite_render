@@ -1,10 +1,7 @@
 #ifndef _RI_WINDOW_
 #define _RI_WINDOW_ 1
 
-#include <string>
-
-#include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
+#include <memory>
 
 #include "core.h"
 #include "basic_types.h"
@@ -17,7 +14,7 @@ namespace Reignite {
   class REIGNITE_API Window {
    public:
     
-    Window(const State* state);
+    Window(const std::shared_ptr<State> state);
     virtual ~Window();
 
     void update();
@@ -27,18 +24,19 @@ namespace Reignite {
     const u16 getWidth();
     const u16 getHeight();
 
-    inline GLFWwindow* const GetCurrentWindow() { return window; }
+    //GLFWwindow* const GetCurrentWindow();
 
-    static Window* Create(const State* state);
+    static Window* Create(const std::shared_ptr<State> state);
    
    private:
 
-    void init(const State* state);
+    void initialize(const std::shared_ptr<State> state);
     void shutdown();
 
-    GLFWwindow* window;
-
-    State* state;
+    std::shared_ptr<State> state;
+    
+    struct Data;
+    Data* data;
   };
 
 } // end of Reignite namespace
