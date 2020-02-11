@@ -40,6 +40,9 @@
     <Filter Include="src\Reignite\Components">
       <UniqueIdentifier>{82B93E2D-EEF0-86C4-F7FA-EAE763B1ADBD}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Reignite\Vulkan">
+      <UniqueIdentifier>{6DB39535-D914-7343-6282-B9F5CEE2A902}</UniqueIdentifier>
+    </Filter>
     <Filter Include="shaders">
       <UniqueIdentifier>{0F45D591-7B24-542D-843C-DF03F09ABA8E}</UniqueIdentifier>
     </Filter>
@@ -780,9 +783,6 @@
     <ClInclude Include="src\Reignite\timer.h">
       <Filter>src\Reignite</Filter>
     </ClInclude>
-    <ClInclude Include="src\Reignite\vulkan_impl.h">
-      <Filter>src\Reignite</Filter>
-    </ClInclude>
     <ClInclude Include="src\Reignite\window.h">
       <Filter>src\Reignite</Filter>
     </ClInclude>
@@ -800,6 +800,9 @@
     </ClInclude>
     <ClInclude Include="src\Reignite\Components\transform_component.h">
       <Filter>src\Reignite\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Reignite\Vulkan\vulkan_impl.h">
+      <Filter>src\Reignite\Vulkan</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -836,10 +839,18 @@
     <ClCompile Include="src\Reignite\Components\transform_component.cpp">
       <Filter>src\Reignite\Components</Filter>
     </ClCompile>
+    <ClCompile Include="src\Reignite\Vulkan\vulkan_impl.cpp">
+      <Filter>src\Reignite\Vulkan</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\shaders\*.glsl">
       <Filter>shaders</Filter>
     </CustomBuild>
+    <CustomBuild Include="..\shaders\*.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl" />
   </ItemGroup>
 </Project>

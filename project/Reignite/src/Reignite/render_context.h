@@ -33,6 +33,7 @@ namespace Reignite {
     u32 createFrameBuffer();
 
     void submitDisplayList(DisplayList* displayList = nullptr);
+    void draw();
 
    private:
 

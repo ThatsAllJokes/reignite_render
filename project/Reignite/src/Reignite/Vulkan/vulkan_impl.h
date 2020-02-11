@@ -882,18 +882,18 @@ void createUniformBuffers(VkDevice device, VkPhysicalDevice physicalDevice,
   }
 }
 
-VkDescriptorPool createDescriptorPool(VkDevice device, const Swapchain& swapChain) {
+VkDescriptorPool createDescriptorPool(VkDevice device, uint32_t maxDescriptors, uint32_t maxSamplers) {
 
   std::array<VkDescriptorPoolSize, 2> poolSizes = {};
   poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  poolSizes[0].descriptorCount = static_cast<uint32_t>(swapChain.images.size());
-  poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER  ;
-  poolSizes[1].descriptorCount = static_cast<uint32_t>(swapChain.images.size());
+  poolSizes[0].descriptorCount = maxDescriptors;
+  poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  poolSizes[1].descriptorCount = maxSamplers;
 
   VkDescriptorPoolCreateInfo poolInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
   poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
   poolInfo.pPoolSizes = poolSizes.data();
-  poolInfo.maxSets = static_cast<uint32_t>(swapChain.images.size());
+  poolInfo.maxSets = maxDescriptors;
 
   VkDescriptorPool descriptorPool;
   VK_CHECK(vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool));
@@ -901,87 +901,98 @@ VkDescriptorPool createDescriptorPool(VkDevice device, const Swapchain& swapChai
   return descriptorPool;
 }
 
-std::vector<VkDescriptorSet> createDescriptorSets(VkDevice device, const Swapchain& swapchain, 
-  VkDescriptorPool descriptorPool, VkDescriptorSetLayout descriptorSetLayout, std::vector<Buffer>& uniformBuffers,
+VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descriptorPool, 
+  VkDescriptorSetLayout descriptorSetLayout, Buffer& uniformBuffer,
   VkImageView textureImageView, VkSampler textureSampler) {
 
-  std::vector<VkDescriptorSetLayout> layouts(swapchain.images.size(), descriptorSetLayout);
+  VkDescriptorSetLayout layout = descriptorSetLayout;
+
   VkDescriptorSetAllocateInfo allocInfo = {};
   allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
   allocInfo.descriptorPool = descriptorPool;
-  allocInfo.descriptorSetCount = static_cast<uint32_t>(swapchain.images.size());
-  allocInfo.pSetLayouts = layouts.data();
+  allocInfo.descriptorSetCount = 1;
+  allocInfo.pSetLayouts = &layout;
 
-  std::vector<VkDescriptorSet> descriptorSets;
-  descriptorSets.resize(swapchain.images.size());
-  VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()));
+  VkDescriptorSet descriptorSet;
+  VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet));
 
-  for (size_t i = 0; i < swapchain.images.size(); ++i) {
+  VkDescriptorBufferInfo bufferInfo = {};
+  bufferInfo.buffer = uniformBuffer.buffer;
+  bufferInfo.offset = 0;
+  bufferInfo.range = sizeof(UniformBufferObject);
 
-    VkDescriptorBufferInfo bufferInfo = {};
-    bufferInfo.buffer = uniformBuffers[i].buffer;
-    bufferInfo.offset = 0;
-    bufferInfo.range = sizeof(UniformBufferObject);
+  VkDescriptorImageInfo imageInfo = {};
+  imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  imageInfo.imageView = textureImageView;
+  imageInfo.sampler = textureSampler;
 
-    VkDescriptorImageInfo imageInfo = {};
-    imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    imageInfo.imageView = textureImageView;
-    imageInfo.sampler = textureSampler;
+  std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+  descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  descriptorWrites[0].dstSet = descriptorSet;
+  descriptorWrites[0].dstBinding = 0;
+  descriptorWrites[0].dstArrayElement = 0;
+  descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  descriptorWrites[0].descriptorCount = 1;
+  descriptorWrites[0].pBufferInfo = &bufferInfo;
 
-    std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
-    descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrites[0].dstSet = descriptorSets[i];
-    descriptorWrites[0].dstBinding = 0;
-    descriptorWrites[0].dstArrayElement = 0;
-    descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptorWrites[0].descriptorCount = 1;
-    descriptorWrites[0].pBufferInfo = &bufferInfo;
+  descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  descriptorWrites[1].dstSet = descriptorSet;
+  descriptorWrites[1].dstBinding = 1;
+  descriptorWrites[1].dstArrayElement = 0;
+  descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  descriptorWrites[1].descriptorCount = 1;
+  descriptorWrites[1].pImageInfo = &imageInfo;
 
-    descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrites[1].dstSet = descriptorSets[i];
-    descriptorWrites[1].dstBinding = 1;
-    descriptorWrites[1].dstArrayElement = 0;
-    descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorWrites[1].descriptorCount = 1;
-    descriptorWrites[1].pImageInfo = &imageInfo;
-
-    vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), 
-      descriptorWrites.data(), 0, nullptr);
-  }
-
-  return descriptorSets;
+  vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), 
+    descriptorWrites.data(), 0, nullptr);
+  
+  return descriptorSet;
 }
 
-void updateUniformBuffer(VkDevice device, std::vector<Buffer>& uniformBuffers, uint32_t currentImage) {
+void updateUniformBuffers(VkDevice device, std::vector<Buffer>& uniformBuffers, uint32_t currentImage) {
 
   static auto startTime = std::chrono::high_resolution_clock::now();
 
   auto currentTime = std::chrono::high_resolution_clock::now();
   float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
+  vec3f position = vec3f(-1.0f, 0.0f, 0.0f);
   UniformBufferObject ubo = {};
-  ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+  ubo.model = glm::translate(mat4f(1.0f), position) * glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
   ubo.view = glm::lookAt(glm::vec3(0.0f, 2.0f, -4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
   ubo.proj = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 10.0f);
   //ubo.proj[1][1] *= -1; // TODO: I already compensate de Y axis in the viewport. Is that correct?
 
   void* data;
-  vkMapMemory(device, uniformBuffers[currentImage].bufferMemory, 0, sizeof(ubo), 0, &data);
+  vkMapMemory(device, uniformBuffers[0].bufferMemory, 0, sizeof(ubo), 0, &data);
   memcpy(data, &ubo, sizeof(ubo));
-  vkUnmapMemory(device, uniformBuffers[currentImage].bufferMemory);
+  vkUnmapMemory(device, uniformBuffers[0].bufferMemory);
+
+  position = vec3f(1.0f, 0.0f, 0.0f);
+  UniformBufferObject ubo2 = {};
+  ubo2.model = glm::translate(mat4f(1.0f), position) * glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+  ubo2.view = glm::lookAt(glm::vec3(0.0f, 2.0f, -4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+  ubo2.proj = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 10.0f);
+  //ubo.proj[1][1] *= -1; // TODO: I already compensate de Y axis in the viewport. Is that correct?
+
+  void* data2;
+  vkMapMemory(device, uniformBuffers[1].bufferMemory, 0, sizeof(ubo2), 0, &data2);
+  memcpy(data2, &ubo2, sizeof(ubo2));
+  vkUnmapMemory(device, uniformBuffers[1].bufferMemory);
 }
 
-VkCommandBuffer createCommandBuffer(VkDevice device, VkCommandPool commandPool) {
+std::vector<VkCommandBuffer> createCommandBuffer(VkDevice device, VkCommandPool commandPool, uint32_t imageCount) {
+
+  std::vector<VkCommandBuffer> commandBuffers(imageCount);
 
   VkCommandBufferAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
   allocateInfo.commandPool = commandPool;
   allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocateInfo.commandBufferCount = 1;
+  allocateInfo.commandBufferCount = imageCount;
 
-  VkCommandBuffer commandBuffer = 0;
-  VK_CHECK(vkAllocateCommandBuffers(device, &allocateInfo, &commandBuffer));
+  VK_CHECK(vkAllocateCommandBuffers(device, &allocateInfo, commandBuffers.data()));
 
-  return commandBuffer;
+  return commandBuffers;
 }
 
 void TransitionImageLayout(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue,

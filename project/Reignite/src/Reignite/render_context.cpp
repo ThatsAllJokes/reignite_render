@@ -5,7 +5,7 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-#include "vulkan_impl.h"
+#include "Vulkan/vulkan_impl.h"
 
 #include "Components/transform_component.h"
 #include "Components/camera_component.h"
@@ -83,6 +83,7 @@ namespace Reignite {
     Swapchain swapchain;
 
     VkCommandPool commandPool;
+    std::vector<VkCommandBuffer> commandBuffers;
 
     Image colorImage;
     Image depthImage;
@@ -97,8 +98,6 @@ namespace Reignite {
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
-
-    VkCommandBuffer commandBuffer;
   };
 
   const std::vector<Vertex> vertices = {
@@ -160,65 +159,74 @@ namespace Reignite {
 
   void Reignite::RenderContext::submitDisplayList(Reignite::DisplayList* displayList) {
 
+    VK_CHECK(vkResetCommandPool(data->device, data->commandPool, 0));
+
+    for (u32 i = 0; i < data->swapchain.imageCount; ++i) {
+
+      VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+
+      VK_CHECK(vkBeginCommandBuffer(data->commandBuffers[i], &beginInfo));
+
+      //VkImageMemoryBarrier renderBeginBarrier = imageBarrier(data->swapchain.images[imageIndex], 0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+      //vkCmdPipelineBarrier(data->commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, 1, &renderBeginBarrier);
+
+      VkClearColorValue clearColor = { 48.f / 255.f, 10.f / 255.f, 36.f / 255.f, 1 };
+      std::array<VkClearValue, 2> clearValues = {};
+      clearValues[0].color = clearColor;
+      clearValues[1].depthStencil = { 1.0f, 0 };
+
+      VkRenderPassBeginInfo passbeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+      passbeginInfo.renderPass = data->renderPass;
+      passbeginInfo.framebuffer = data->swapchain.framebuffers[i];
+      passbeginInfo.renderArea.extent.width = data->swapchain.width;
+      passbeginInfo.renderArea.extent.height = data->swapchain.height;
+      passbeginInfo.renderArea.offset = { 0, 0 };
+      passbeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+      passbeginInfo.pClearValues = clearValues.data();
+
+      vkCmdBeginRenderPass(data->commandBuffers[i], &passbeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+      VkViewport viewport = { 0, float(data->swapchain.height), float(data->swapchain.width), -float(data->swapchain.height), 0, 1 };
+      VkRect2D scissor = { { 0, 0 }, { data->swapchain.width, data->swapchain.height } };
+
+      vkCmdSetViewport(data->commandBuffers[i], 0, 1, &viewport);
+      vkCmdSetScissor(data->commandBuffers[i], 0, 1, &scissor);
+
+      vkCmdBindPipeline(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->trianglePipeline);
+
+      VkBuffer vertexBuffers = { data->vertexBuffer.buffer };
+      VkDeviceSize offset[] = { 0 };
+      vkCmdBindVertexBuffers(data->commandBuffers[i], 0, 1, &vertexBuffers, offset);
+      vkCmdBindIndexBuffer(data->commandBuffers[i], data->indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT16);
+
+      vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->triangleLayout, 0, 1,
+        &data->descriptorSets[0], 0, nullptr);
+
+      vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+      vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->triangleLayout, 0, 1,
+        &data->descriptorSets[1], 0, nullptr);
+
+      vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+      vkCmdEndRenderPass(data->commandBuffers[i]);
+
+      //VkImageMemoryBarrier renderEndBarrier = imageBarrier(data->swapchain.images[imageIndex], VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+      //vkCmdPipelineBarrier(data->commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, 1, &renderEndBarrier);
+
+      VK_CHECK(vkEndCommandBuffer(data->commandBuffers[i]));
+    }
+  }
+
+  void Reignite::RenderContext::draw() {
+
     // TODO: Check resize functionality
-      //resizeSwapchainIfNecessary(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass, data->depthImage.imageView);
+    //resizeSwapchainIfNecessary(data->swapchain, data->physicalDevice, data->device, data->surface, data->familyIndex, data->swapchainFormat, data->renderPass, data->depthImage.imageView);
 
     uint32_t imageIndex = 0;
     VK_CHECK(vkAcquireNextImageKHR(data->device, data->swapchain.swapchain, ~0ull, data->acquireSemaphore, VK_NULL_HANDLE, &imageIndex));
 
-    VK_CHECK(vkResetCommandPool(data->device, data->commandPool, 0));
-
-    VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-    VK_CHECK(vkBeginCommandBuffer(data->commandBuffer, &beginInfo));
-
-    //VkImageMemoryBarrier renderBeginBarrier = imageBarrier(data->swapchain.images[imageIndex], 0, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    //vkCmdPipelineBarrier(data->commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, 1, &renderBeginBarrier);
-
-    VkClearColorValue clearColor = { 48.f / 255.f, 10.f / 255.f, 36.f / 255.f, 1 };
-    std::array<VkClearValue, 2> clearValues = {};
-    clearValues[0].color = clearColor;
-    clearValues[1].depthStencil = { 1.0f, 0 };
-
-    VkRenderPassBeginInfo passbeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-    passbeginInfo.renderPass = data->renderPass;
-    passbeginInfo.framebuffer = data->swapchain.framebuffers[imageIndex];
-    passbeginInfo.renderArea.extent.width = data->swapchain.width;
-    passbeginInfo.renderArea.extent.height = data->swapchain.height;
-    passbeginInfo.renderArea.offset = { 0, 0 };
-    passbeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-    passbeginInfo.pClearValues = clearValues.data();
-
-    vkCmdBeginRenderPass(data->commandBuffer, &passbeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-    VkViewport viewport = { 0, float(data->swapchain.height), float(data->swapchain.width), -float(data->swapchain.height), 0, 1 };
-    VkRect2D scissor = { { 0, 0 }, { data->swapchain.width, data->swapchain.height } };
-
-    vkCmdSetViewport(data->commandBuffer, 0, 1, &viewport);
-    vkCmdSetScissor(data->commandBuffer, 0, 1, &scissor);
-
-    vkCmdBindPipeline(data->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->trianglePipeline);
-
-    VkBuffer vertexBuffers = { data->vertexBuffer.buffer };
-    VkDeviceSize offset[] = { 0 };
-    vkCmdBindVertexBuffers(data->commandBuffer, 0, 1, &vertexBuffers, offset);
-    vkCmdBindIndexBuffer(data->commandBuffer, data->indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT16);
-
-    vkCmdBindDescriptorSets(data->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->triangleLayout, 0, 1,
-      &data->descriptorSets[0], 0, nullptr);
-
-    //vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-    vkCmdDrawIndexed(data->commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-
-    vkCmdEndRenderPass(data->commandBuffer);
-
-    //VkImageMemoryBarrier renderEndBarrier = imageBarrier(data->swapchain.images[imageIndex], VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-    //vkCmdPipelineBarrier(data->commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, 1, &renderEndBarrier);
-
-    VK_CHECK(vkEndCommandBuffer(data->commandBuffer));
-
-    updateUniformBuffer(data->device, data->uniformBuffers, imageIndex);
+    updateUniformBuffers(data->device, data->uniformBuffers, imageIndex);
 
     VkSemaphore waitSemaphores[] = { data->acquireSemaphore };
     VkSemaphore signalSemaphores[] = { data->releaseSemaphore };
@@ -229,7 +237,7 @@ namespace Reignite {
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &data->commandBuffer;
+    submitInfo.pCommandBuffers = &data->commandBuffers[imageIndex];
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
@@ -324,9 +332,9 @@ namespace Reignite {
 
     data->commandPool = createCommandPool(data->device, data->familyIndex);
     assert(data->commandPool);
-
-    data->commandBuffer = createCommandBuffer(data->device, data->commandPool);
-    assert(data->commandBuffer);
+    
+    data->commandBuffers = createCommandBuffer(data->device, data->commandPool, data->swapchain.imageCount);
+    //assert(data->commandBuffer);
 
     data->texture = createTextureImage(data->device, data->physicalDevice, data->commandPool, data->queue);
     assert(data->texture.image);
@@ -348,13 +356,16 @@ namespace Reignite {
 
     createUniformBuffers(data->device, data->physicalDevice, data->swapchain, data->uniformBuffers);
 
-    data->descriptorPool = createDescriptorPool(data->device, data->swapchain);
+    data->descriptorPool = createDescriptorPool(data->device, 5, 2);
     assert(data->descriptorPool);
 
-    data->descriptorSets = createDescriptorSets(data->device, data->swapchain, data->descriptorPool,
-      data->descriptorSetLayout, data->uniformBuffers, data->texture.imageView, data->textureSampler);
-    for (size_t i = 0; i < data->descriptorSets.size(); ++i)
-      assert(data->descriptorSets[i]);
+    data->descriptorSets.resize(2);
+    for (size_t i = 0; i < data->descriptorSets.size(); ++i) {
+
+      data->descriptorSets[i] = createDescriptorSets(data->device, data->descriptorPool,
+        data->descriptorSetLayout, data->uniformBuffers[i], data->texture.imageView, data->textureSampler);
+        assert(data->descriptorSets[i]);
+    }
   }
 
   void Reignite::RenderContext::shutdown() {

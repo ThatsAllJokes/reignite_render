@@ -25,7 +25,8 @@ project "Reignite"
     "project/Reignite/src/Commands/**.cpp",
     "project/Reignite/src/Components/**.h",
     "project/Reignite/src/Components/**.cpp",
-    --"project/shaders/**.glsl"
+    "project/Reignite/src/Vulkan/**.h",
+    "project/Reignite/src/Vulkan/**.cpp",
   }
 
   includedirs {

@@ -44,7 +44,7 @@ void Reignite::Application::Run() {
 
     component_system->update();
 
-    render_context->submitDisplayList();
+    render_context->draw();
   }
 }
 
@@ -55,6 +55,8 @@ void Reignite::Application::initialize() {
   window = std::unique_ptr<Window>(Window::Create(state));
   component_system = std::unique_ptr<ComponentSystem>(new ComponentSystem(state));
   render_context = std::unique_ptr<RenderContext>(new RenderContext(state));
+
+  render_context->submitDisplayList();
 
   is_running = true;
 }
