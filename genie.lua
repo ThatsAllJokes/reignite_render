@@ -25,6 +25,8 @@ project "Reignite"
     "project/Reignite/src/Commands/**.cpp",
     "project/Reignite/src/Components/**.h",
     "project/Reignite/src/Components/**.cpp",
+    "project/Reignite/src/GfxResources/**.h",
+    "project/Reignite/src/GfxResources/**.cpp",
     "project/Reignite/src/Vulkan/**.h",
     "project/Reignite/src/Vulkan/**.cpp",
   }

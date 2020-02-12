@@ -364,6 +364,7 @@
     <ClInclude Include="src\reignite.h" />
     <ClInclude Include="src\Reignite\application.h" />
     <ClInclude Include="src\Reignite\basic_types.h" />
+    <ClInclude Include="src\Reignite\Components\render_component.h" />
     <ClInclude Include="src\Reignite\component_system.h" />
     <ClInclude Include="src\Reignite\core.h" />
     <ClInclude Include="src\Reignite\display_list.h" />
@@ -377,6 +378,7 @@
     <ClInclude Include="src\Reignite\Commands\render_cube_demo_command.h" />
     <ClInclude Include="src\Reignite\Components\camera_component.h" />
     <ClInclude Include="src\Reignite\Components\transform_component.h" />
+    <ClInclude Include="src\Reignite\GfxResources\geometry_resource.h" />
     <ClInclude Include="src\Reignite\Vulkan\vulkan_impl.h" />
   </ItemGroup>
   <ItemGroup>
@@ -384,6 +386,7 @@
     </ClCompile>
     <ClCompile Include="src\Reignite\application.cpp">
     </ClCompile>
+    <ClCompile Include="src\Reignite\Components\render_component.cpp" />
     <ClCompile Include="src\Reignite\component_system.cpp">
     </ClCompile>
     <ClCompile Include="src\Reignite\display_list.cpp">
@@ -394,7 +397,6 @@
     </ClCompile>
     <ClCompile Include="src\Reignite\timer.cpp">
     </ClCompile>
-    <ClCompile Include="src\Reignite\Vulkan\vulkan_impl.cpp" />
     <ClCompile Include="src\Reignite\window.cpp">
     </ClCompile>
     <ClCompile Include="src\Reignite\Commands\render_cube_demo_command.cpp">
@@ -402,6 +404,10 @@
     <ClCompile Include="src\Reignite\Components\camera_component.cpp">
     </ClCompile>
     <ClCompile Include="src\Reignite\Components\transform_component.cpp">
+    </ClCompile>
+    <ClCompile Include="src\Reignite\GfxResources\geometry_resource.cpp">
+    </ClCompile>
+    <ClCompile Include="src\Reignite\Vulkan\vulkan_impl.cpp">
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

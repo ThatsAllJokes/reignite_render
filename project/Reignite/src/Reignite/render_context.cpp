@@ -2,15 +2,12 @@
 
 #include "display_list.h"
 
-#include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
-
 #include "Vulkan/vulkan_impl.h"
 
 #include "Components/transform_component.h"
 #include "Components/camera_component.h"
 
-#include "Commands/render_cube_demo_command.h"
+#include "GfxResources/geometry_resource.h"
 
 namespace Reignite {
 
@@ -34,16 +31,16 @@ namespace Reignite {
   struct Reignite::RenderContext::Data {
 
     RenderContextParams params;
+    std::vector<Geometry> geometries;
 
     // Render state
     bool render_should_close;
-
-    // Vulkan
 
     u32 frameCounter;
     u32 lastFPS;
     // std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp;
 
+    // Vulkan
     VkDebugReportCallbackEXT debugCallback;
 
     VkInstance instance;
@@ -52,9 +49,6 @@ namespace Reignite {
     uint32_t physicalDeviceCount;
 
     VkPhysicalDevice physicalDevice;
-    //VkPhysicalDeviceProperties physicalDeviceProperties;
-    //VkPhysicalDeviceFeatures physicalDeviceFeatures;
-    //VkPhysicalDeviceMemoryProperties physicalDeviceMemoryProperties;
     uint32_t familyIndex;
 
     VkDevice device;
@@ -94,52 +88,15 @@ namespace Reignite {
 
     Buffer vertexBuffer;
     Buffer indexBuffer;
+    Buffer vertexBuffer2;
+    Buffer indexBuffer2;
     std::vector<Buffer> uniformBuffers;
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
-  };
 
-  const std::vector<Vertex> vertices = {
-    // TOP
-    {{-0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}}, // 0
-    {{ 0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}}, // 1
-    {{ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}, // 2
-    {{-0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}, // 3
-    // BOTTOM
-    {{-0.5f, -0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}}, // 4
-    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}}, // 5
-    {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}, // 6
-    {{-0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}, // 7
-    // FRONT
-    {{-0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}}, // 8
-    {{ 0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}}, // 9
-    {{ 0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}}, // 10
-    {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}, // 11
-    // BACK
-    {{-0.5f, -0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}}, // 12
-    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}, // 13
-    {{ 0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}}, // 14
-    {{-0.5f,  0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}, // 15
-    // LEFT
-    {{-0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}}, // 16
-    {{-0.5f,  0.5f,  0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, // 17
-    {{-0.5f, -0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}, // 18
-    {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}}, // 19
-    // RIGHT
-    {{ 0.5f,  0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}}, // 20
-    {{ 0.5f,  0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}}, // 21
-    {{ 0.5f, -0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}}, // 22
-    {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}}, // 23
-  };
-
-  const std::vector<uint16_t> indices{
-    0, 1, 2, 2, 3, 0, // Top
-    4, 6, 5, 6, 4, 7, // Bottom
-    8, 9, 10, 10, 11, 8, // Front
-    12, 13, 14, 14, 15, 12, // Back
-    16, 18, 17, 18, 16, 19, // Left
-    20, 21, 22, 22, 23, 20, // Right
+    Geometry cube = GeometryResourceTextureCube();
+    Geometry square = GeometryResourceSquare();
   };
 
   Reignite::RenderContext::RenderContext(const std::shared_ptr<State> s) {
@@ -194,20 +151,24 @@ namespace Reignite {
 
       vkCmdBindPipeline(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->trianglePipeline);
 
-      VkBuffer vertexBuffers = { data->vertexBuffer.buffer };
+      std::array<VkBuffer, 2> vertexBuffers = { data->vertexBuffer.buffer, data->vertexBuffer2.buffer };
+      std::array<VkBuffer, 2> indexBuffers = { data->indexBuffer.buffer, data->indexBuffer2.buffer };
       VkDeviceSize offset[] = { 0 };
-      vkCmdBindVertexBuffers(data->commandBuffers[i], 0, 1, &vertexBuffers, offset);
-      vkCmdBindIndexBuffer(data->commandBuffers[i], data->indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT16);
+      vkCmdBindVertexBuffers(data->commandBuffers[i], 0, 1, &vertexBuffers[0], offset);
+      vkCmdBindIndexBuffer(data->commandBuffers[i], indexBuffers[0], 0, VK_INDEX_TYPE_UINT16);
 
       vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->triangleLayout, 0, 1,
         &data->descriptorSets[0], 0, nullptr);
 
-      vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+      vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(data->cube.indices.size()), 1, 0, 0, 0);
+
+      vkCmdBindVertexBuffers(data->commandBuffers[i], 0, 1, &vertexBuffers[1], offset);
+      vkCmdBindIndexBuffer(data->commandBuffers[i], indexBuffers[1], 0, VK_INDEX_TYPE_UINT16);
 
       vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->triangleLayout, 0, 1,
         &data->descriptorSets[1], 0, nullptr);
 
-      vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+      vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(data->square.indices.size()), 1, 0, 0, 0);
 
       vkCmdEndRenderPass(data->commandBuffers[i]);
 
@@ -303,11 +264,15 @@ namespace Reignite {
     data->renderPass = createRenderPass(data->device, data->physicalDevice, data->swapchainFormat, data->msaaSamples);
     assert(data->renderPass);
 
+#ifdef EXE_ROUTE
+    data->triangleVS = loadShader(data->device, "../../../../project/shaders/basic.vert.spv");
+    data->triangleFS = loadShader(data->device, "../../../../project/shaders/basic.frag.spv");
+#else
     data->triangleVS = loadShader(data->device, "../shaders/basic.vert.spv");
-    assert(data->triangleVS);
-
     data->triangleFS = loadShader(data->device, "../shaders/basic.frag.spv");
+#endif
     assert(data->triangleFS);
+    assert(data->triangleVS);
 
     data->pipelineCache = 0; // TODO: This is critical for performance!
 
@@ -332,7 +297,7 @@ namespace Reignite {
 
     data->commandPool = createCommandPool(data->device, data->familyIndex);
     assert(data->commandPool);
-    
+
     data->commandBuffers = createCommandBuffer(data->device, data->commandPool, data->swapchain.imageCount);
     //assert(data->commandBuffer);
 
@@ -346,11 +311,19 @@ namespace Reignite {
     data->textureSampler = createTextureSampler(data->device, data->texture.mipLevels);
     assert(data->textureSampler);
 
-    data->vertexBuffer = createVertexBuffer(data->device, data->physicalDevice, vertices, data->commandPool, data->queue);
+    data->vertexBuffer = createVertexBuffer(data->device, data->physicalDevice, data->cube.vertices, data->commandPool, data->queue);
     assert(data->vertexBuffer.buffer);
     assert(data->vertexBuffer.bufferMemory);
 
-    data->indexBuffer = createIndexBuffer(data->device, data->physicalDevice, indices, data->commandPool, data->queue);
+    data->indexBuffer = createIndexBuffer(data->device, data->physicalDevice, data->cube.indices, data->commandPool, data->queue);
+    assert(data->indexBuffer.buffer);
+    assert(data->indexBuffer.bufferMemory);
+
+    data->vertexBuffer2 = createVertexBuffer(data->device, data->physicalDevice, data->square.vertices, data->commandPool, data->queue);
+    assert(data->vertexBuffer.buffer);
+    assert(data->vertexBuffer.bufferMemory);
+
+    data->indexBuffer2 = createIndexBuffer(data->device, data->physicalDevice, data->square.indices, data->commandPool, data->queue);
     assert(data->indexBuffer.buffer);
     assert(data->indexBuffer.bufferMemory);
 
@@ -364,7 +337,7 @@ namespace Reignite {
 
       data->descriptorSets[i] = createDescriptorSets(data->device, data->descriptorPool,
         data->descriptorSetLayout, data->uniformBuffers[i], data->texture.imageView, data->textureSampler);
-        assert(data->descriptorSets[i]);
+      assert(data->descriptorSets[i]);
     }
   }
 

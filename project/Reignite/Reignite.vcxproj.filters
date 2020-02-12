@@ -40,6 +40,9 @@
     <Filter Include="src\Reignite\Components">
       <UniqueIdentifier>{82B93E2D-EEF0-86C4-F7FA-EAE763B1ADBD}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Reignite\GfxResources">
+      <UniqueIdentifier>{FC075F6F-68CA-92F9-B17A-21861D7C6BD7}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Reignite\Vulkan">
       <UniqueIdentifier>{6DB39535-D914-7343-6282-B9F5CEE2A902}</UniqueIdentifier>
     </Filter>
@@ -801,8 +804,14 @@
     <ClInclude Include="src\Reignite\Components\transform_component.h">
       <Filter>src\Reignite\Components</Filter>
     </ClInclude>
+    <ClInclude Include="src\Reignite\GfxResources\geometry_resource.h">
+      <Filter>src\Reignite\GfxResources</Filter>
+    </ClInclude>
     <ClInclude Include="src\Reignite\Vulkan\vulkan_impl.h">
       <Filter>src\Reignite\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Reignite\Components\render_component.h">
+      <Filter>src\Reignite\Components</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -839,8 +848,14 @@
     <ClCompile Include="src\Reignite\Components\transform_component.cpp">
       <Filter>src\Reignite\Components</Filter>
     </ClCompile>
+    <ClCompile Include="src\Reignite\GfxResources\geometry_resource.cpp">
+      <Filter>src\Reignite\GfxResources</Filter>
+    </ClCompile>
     <ClCompile Include="src\Reignite\Vulkan\vulkan_impl.cpp">
       <Filter>src\Reignite\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Reignite\Components\render_component.cpp">
+      <Filter>src\Reignite\Components</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
