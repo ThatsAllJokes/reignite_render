@@ -813,6 +813,12 @@
     <ClInclude Include="src\Reignite\Components\render_component.h">
       <Filter>src\Reignite\Components</Filter>
     </ClInclude>
+    <ClInclude Include="src\Reignite\GfxResources\material_resource.h">
+      <Filter>src\Reignite\GfxResources</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Reignite\GfxResources\light_component.h">
+      <Filter>src\Reignite\Components</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\extern\volk\volk.c">
@@ -857,11 +863,19 @@
     <ClCompile Include="src\Reignite\Components\render_component.cpp">
       <Filter>src\Reignite\Components</Filter>
     </ClCompile>
+    <ClCompile Include="src\Reignite\GfxResources\material_resource.cpp">
+      <Filter>src\Reignite\GfxResources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\shaders\*.glsl">
       <Filter>shaders</Filter>
     </CustomBuild>
+    <CustomBuild Include="..\shaders\*.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl" />
     <CustomBuild Include="..\shaders\*.glsl" />
     <CustomBuild Include="..\shaders\*.glsl" />
     <CustomBuild Include="..\shaders\*.glsl" />

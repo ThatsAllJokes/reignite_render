@@ -8,6 +8,7 @@
 #include <array>
 #include <chrono>
 #include <vector>
+#include <string>
 #include <algorithm>
 
 #include <GLFW/glfw3.h>
@@ -236,6 +237,8 @@ void CreateDepthResources(VkDevice device, VkPhysicalDevice physicalDevice,
 
 void CreateColorResources(VkDevice device, VkPhysicalDevice physicalDevice, const Swapchain& swapchain,
   Image& colorImage, VkFormat swapchainImageFormat, VkSampleCountFlagBits msaaSamples);
+
+bool LoadModelFromFile(std::string filename, VkDevice device, VkQueue copyQueue);
 
 #endif // _VULKAN_IMPL_
 

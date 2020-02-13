@@ -8,6 +8,7 @@
 #include "Components/camera_component.h"
 
 #include "GfxResources/geometry_resource.h"
+#include "GfxResources/material_resource.h" 
 
 namespace Reignite {
 
@@ -32,6 +33,7 @@ namespace Reignite {
 
     RenderContextParams params;
     std::vector<Geometry> geometries;
+    std::vector<Material> materials;
 
     // Render state
     bool render_should_close;
@@ -69,7 +71,6 @@ namespace Reignite {
     VkShaderModule triangleFS;
 
     VkPipelineCache pipelineCache;
-
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout triangleLayout;
     VkPipeline trianglePipeline;
@@ -121,6 +122,7 @@ namespace Reignite {
     for (u32 i = 0; i < data->swapchain.imageCount; ++i) {
 
       VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+      //beginInfo.flags
 
       VK_CHECK(vkBeginCommandBuffer(data->commandBuffers[i], &beginInfo));
 

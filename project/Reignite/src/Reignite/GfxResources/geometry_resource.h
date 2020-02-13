@@ -11,6 +11,7 @@
 namespace Reignite {
 
   struct GeometryResource {
+
     std::vector<Vertex> vertices;
     std::vector<u16> indices;
   };

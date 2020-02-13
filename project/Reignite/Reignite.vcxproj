@@ -369,6 +369,8 @@
     <ClInclude Include="src\Reignite\core.h" />
     <ClInclude Include="src\Reignite\display_list.h" />
     <ClInclude Include="src\Reignite\entry_point.h" />
+    <ClInclude Include="src\Reignite\GfxResources\light_component.h" />
+    <ClInclude Include="src\Reignite\GfxResources\material_resource.h" />
     <ClInclude Include="src\Reignite\log.h" />
     <ClInclude Include="src\Reignite\render_context.h" />
     <ClInclude Include="src\Reignite\timer.h" />
@@ -391,6 +393,7 @@
     </ClCompile>
     <ClCompile Include="src\Reignite\display_list.cpp">
     </ClCompile>
+    <ClCompile Include="src\Reignite\GfxResources\material_resource.cpp" />
     <ClCompile Include="src\Reignite\log.cpp">
     </ClCompile>
     <ClCompile Include="src\Reignite\render_context.cpp">

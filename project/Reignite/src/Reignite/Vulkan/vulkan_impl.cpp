@@ -1226,3 +1226,5 @@ void CreateColorResources(VkDevice device, VkPhysicalDevice physicalDevice, cons
 
   colorImage.imageView = createImageView(device, colorImage.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
+
+bool LoadModelFromFile(std::string filename, VkDevice device, VkQueue copyQueue);

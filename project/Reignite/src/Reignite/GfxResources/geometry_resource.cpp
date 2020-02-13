@@ -1,12 +1,12 @@
 #include "geometry_resource.h"
 
 
-void CreateGeometry(Geometry& geometry) {
-
-}
+void CreateGeometry(Geometry& geometry) { }
 
 void DestroyGeometry(Geometry& geometry) {
 
+  geometry.vertices.clear();
+  geometry.indices.clear();
 }
 
 Geometry GeometryResourceCube() {

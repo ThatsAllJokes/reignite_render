@@ -25,16 +25,5 @@ bool InitCameraComponent(CameraComp& tf) {
 void UpdateCameraComponent(CameraComp& tf) {
 
   tf.view_mat = glm::lookAt(tf.position, tf.position + tf.forward, vec3f(0.0f, 1.0f, 0.0f));
-
-  switch (tf.type) {
-  case CameraComp::RI_CAMERA_TYPE_PERSPECTIVE:
-    tf.projection_mat = glm::perspective(glm::radians(tf.fov), tf.aspect, tf.near_z, tf.far_z);
-    break;
-  case CameraComp::RI_CAMERA_TYPE_ORTHOGONAL:
-    tf.projection_mat = glm::ortho(tf.left, tf.right, tf.bottom, tf.top, tf.near_z, tf.far_z);
-    break;
-  default:
-    assert(!"Unasigned camera type?");
-    break;
-  }
+  tf.projection_mat = glm::perspective(glm::radians(tf.fov), tf.aspect, tf.near_z, tf.far_z);
 }

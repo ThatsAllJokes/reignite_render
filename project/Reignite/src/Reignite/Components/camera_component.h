@@ -1,8 +1,8 @@
-#ifndef _CAMERA_COMPONENT_
-#define _CAMERA_COMPONENT_ 1
-
+#ifndef _RI_CAMERA_COMPONENT_
+#define _RI_CAMERA_COMPONENT_ 1
 
 #include "../basic_types.h"
+
 
 namespace Reignite {
 
