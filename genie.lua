@@ -37,6 +37,8 @@ project "Reignite"
     "extern/glm/glm",
     "extern/spdlog/include",
     "extern/stb",
+    "extern/tinygltf",
+    "extern/tinyobjloader",
     "extern/volk",
   }
 

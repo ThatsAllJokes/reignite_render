@@ -35,6 +35,8 @@
 
 //#define EXE_ROUTE 1
 
+// VERTEX DEFINITION //////////////////////////////////////////////////////////////////////
+
 struct Vertex {
   float position[3];
   float normal[3];
@@ -73,11 +75,59 @@ struct Vertex {
   }
 };
 
-struct UniformBufferObject {
-  glm::mat4 model;
-  glm::mat4 view;
-  glm::mat4 proj;
+// SWAPCHAIN //////////////////////////////////////////////////////////////////////////////////
+
+struct Swapchain {
+
+  VkSwapchainKHR swapchain;
+  std::vector<VkImage> images;
+  std::vector<VkImageView> imageViews;
+  std::vector<VkFramebuffer> framebuffers;
+
+  uint32_t width, height;
+  uint32_t imageCount;
 };
+
+VkFormat getSwapchainFormat(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);
+
+VkSwapchainKHR createSwapchain(VkDevice device, VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR surfaceCaps,
+  uint32_t familyIndex, VkFormat format, uint32_t width, uint32_t height, VkSwapchainKHR oldSwapchain);
+
+void createSwapchain(Swapchain& result, VkPhysicalDevice physicalDevice, VkDevice device,
+  VkSurfaceKHR surface, uint32_t familyIndex, VkFormat format, VkRenderPass renderPass,
+  VkImageView depthImageView, VkImageView colorImageView, VkSwapchainKHR oldSwapchain = 0);
+
+void destroySwapchain(VkDevice device, const Swapchain& swapchain);
+
+// TODO: Check uniform buffers recreation when modifying swapchain
+// TODO: Check description pool recreation when modifying swapchain
+void resizeSwapchainIfNecessary(Swapchain& result, VkPhysicalDevice physicalDevice,
+  VkDevice device, VkSurfaceKHR surface, uint32_t familyIndex, VkFormat format,
+  VkRenderPass renderPass, VkImageView depthImageView);
+
+// BUFFER ///////////////////////////////////////////////////////////////////////////////////
+
+struct Buffer {
+  VkBuffer buffer;
+  VkDeviceMemory bufferMemory;
+  void* mapped = nullptr;
+};
+
+void createBuffer(VkDevice device, VkPhysicalDevice physicalDevice, Buffer& buffer,
+  VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+
+void destroyBuffer(VkDevice device, const Buffer& buffer);
+
+void copyBuffer(VkDevice device, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
+  VkCommandPool commandPool, VkQueue graphicsQueue);
+
+Buffer createVertexBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
+  const std::vector<Vertex>& vertices, VkCommandPool commandPool, VkQueue graphicsQueue);
+
+Buffer createIndexBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
+  const std::vector<u32>& indices, VkCommandPool commandPool, VkQueue graphicsQueue);
+
+// IMAGE ///////////////////////////////////////////////////////////////////////////////////
 
 struct Image {
   VkImage image;
@@ -87,22 +137,26 @@ struct Image {
   uint32_t mipLevels;
 };
 
-struct Swapchain {
+void copyBufferToImage(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue,
+  Buffer& buffer, Image& texture);
 
-  VkSwapchainKHR swapchain;
+void createImage(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t width, uint32_t height,
+  uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
+  VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 
-  std::vector<VkImage> images;
-  std::vector<VkImageView> imageViews;
-  std::vector<VkFramebuffer> framebuffers;
+void DestroyImage(VkDevice device, Image& image);
 
-  uint32_t width, height;
-  uint32_t imageCount;
+// UBO ////////////////////////////////////////////////////////////////////////////////////
+
+struct UniformBufferObject {
+  glm::mat4 model;
+  glm::mat4 view;
+  glm::mat4 proj;
 };
 
-struct Buffer {
-  VkBuffer buffer;
-  VkDeviceMemory bufferMemory;
-};
+void updateUniformBuffers(VkDevice device, std::vector<Buffer>& uniformBuffers, uint32_t currentImage);
+
+
 
 VkInstance createInstance();
 
@@ -123,11 +177,6 @@ VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t 
 VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint32_t familyIndex);
 
 VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window);
-
-VkFormat getSwapchainFormat(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface);
-
-VkSwapchainKHR createSwapchain(VkDevice device, VkSurfaceKHR surface, VkSurfaceCapabilitiesKHR surfaceCaps, 
-  uint32_t familyIndex, VkFormat format, uint32_t width, uint32_t height, VkSwapchainKHR oldSwapchain);
 
 VkSemaphore createSemaphore(VkDevice device);
 
@@ -163,36 +212,10 @@ VkImageMemoryBarrier imageBarrier(VkImage image,
   VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask,
   VkImageLayout oldLayout, VkImageLayout newLayout);
 
-void createSwapchain(Swapchain& result, VkPhysicalDevice physicalDevice, VkDevice device,
-  VkSurfaceKHR surface, uint32_t familyIndex, VkFormat format, VkRenderPass renderPass,
-  VkImageView depthImageView, VkImageView colorImageView, VkSwapchainKHR oldSwapchain = 0);
-
-void destroySwapchain(VkDevice device, const Swapchain& swapchain);
-
-// TODO: Check uniform buffers recreation when modifying swapchain
-// TODO: Check description pool recreation when modifying swapchain
-void resizeSwapchainIfNecessary(Swapchain& result, VkPhysicalDevice physicalDevice,
-  VkDevice device, VkSurfaceKHR surface, uint32_t familyIndex, VkFormat format,
-  VkRenderPass renderPass, VkImageView depthImageView);
-
-void createBuffer(VkDevice device, VkPhysicalDevice physicalDevice, Buffer& buffer,
-  VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
-
-void destroyBuffer(VkDevice device, const Buffer& buffer);
-
 VkCommandBuffer BeginSingleTimeCommands(VkDevice device, VkCommandPool commandPool);
 
 void EndSingleTimeCommands(VkDevice device, VkCommandBuffer commandBuffer, VkCommandPool commandPool,
   VkQueue graphicsQueue);
-
-void copyBuffer(VkDevice device, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size,
-  VkCommandPool commandPool, VkQueue graphicsQueue);
-
-Buffer createVertexBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
-  const std::vector<Vertex>& vertices, VkCommandPool commandPool, VkQueue graphicsQueue);
-
-Buffer createIndexBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
-  const std::vector<uint16_t>& indices, VkCommandPool commandPool, VkQueue graphicsQueue);
 
 void createUniformBuffers(VkDevice device, VkPhysicalDevice physicalDevice,
   Swapchain& swapChain, std::vector<Buffer>& uniformBuffers);
@@ -203,21 +226,10 @@ VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descripto
   VkDescriptorSetLayout descriptorSetLayout, Buffer& uniformBuffer,
   VkImageView textureImageView, VkSampler textureSampler);
 
-void updateUniformBuffers(VkDevice device, std::vector<Buffer>& uniformBuffers, uint32_t currentImage);
-
 std::vector<VkCommandBuffer> createCommandBuffer(VkDevice device, VkCommandPool commandPool, uint32_t imageCount);
 
 void TransitionImageLayout(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue,
   VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
-
-void copyBufferToImage(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue,
-  Buffer& buffer, Image& texture);
-
-void createImage(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t width, uint32_t height,
-  uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
-  VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
-
-void DestroyImage(VkDevice device, Image& image);
 
 void generateMipmaps(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool,
   VkQueue graphicsQueue, VkImage image, VkFormat format, int32_t texWidth, int32_t texHeight,
@@ -237,8 +249,6 @@ void CreateDepthResources(VkDevice device, VkPhysicalDevice physicalDevice,
 
 void CreateColorResources(VkDevice device, VkPhysicalDevice physicalDevice, const Swapchain& swapchain,
   Image& colorImage, VkFormat swapchainImageFormat, VkSampleCountFlagBits msaaSamples);
-
-bool LoadModelFromFile(std::string filename, VkDevice device, VkQueue copyQueue);
 
 #endif // _VULKAN_IMPL_
 

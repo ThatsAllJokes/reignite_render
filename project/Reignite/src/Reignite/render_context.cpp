@@ -87,17 +87,13 @@ namespace Reignite {
     VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
     VkSampler textureSampler;
 
-    Buffer vertexBuffer;
-    Buffer indexBuffer;
-    Buffer vertexBuffer2;
-    Buffer indexBuffer2;
+    Geometry cube = GeometryResourceTextureCube();
+    Geometry sphere;
+
     std::vector<Buffer> uniformBuffers;
 
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
-
-    Geometry cube = GeometryResourceTextureCube();
-    Geometry square = GeometryResourceSquare();
   };
 
   Reignite::RenderContext::RenderContext(const std::shared_ptr<State> s) {
@@ -153,11 +149,11 @@ namespace Reignite {
 
       vkCmdBindPipeline(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->trianglePipeline);
 
-      std::array<VkBuffer, 2> vertexBuffers = { data->vertexBuffer.buffer, data->vertexBuffer2.buffer };
-      std::array<VkBuffer, 2> indexBuffers = { data->indexBuffer.buffer, data->indexBuffer2.buffer };
+      std::array<VkBuffer, 2> vertexBuffers = { data->cube.vertexBuffer.buffer, data->sphere.vertexBuffer.buffer };
+      std::array<VkBuffer, 2> indexBuffers = { data->cube.indexBuffer.buffer, data->sphere.indexBuffer.buffer };
       VkDeviceSize offset[] = { 0 };
       vkCmdBindVertexBuffers(data->commandBuffers[i], 0, 1, &vertexBuffers[0], offset);
-      vkCmdBindIndexBuffer(data->commandBuffers[i], indexBuffers[0], 0, VK_INDEX_TYPE_UINT16);
+      vkCmdBindIndexBuffer(data->commandBuffers[i], indexBuffers[0], 0, VK_INDEX_TYPE_UINT32);
 
       vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->triangleLayout, 0, 1,
         &data->descriptorSets[0], 0, nullptr);
@@ -165,12 +161,12 @@ namespace Reignite {
       vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(data->cube.indices.size()), 1, 0, 0, 0);
 
       vkCmdBindVertexBuffers(data->commandBuffers[i], 0, 1, &vertexBuffers[1], offset);
-      vkCmdBindIndexBuffer(data->commandBuffers[i], indexBuffers[1], 0, VK_INDEX_TYPE_UINT16);
+      vkCmdBindIndexBuffer(data->commandBuffers[i], indexBuffers[1], 0, VK_INDEX_TYPE_UINT32);
 
       vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->triangleLayout, 0, 1,
         &data->descriptorSets[1], 0, nullptr);
 
-      vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(data->square.indices.size()), 1, 0, 0, 0);
+      vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(data->sphere.indices.size()), 1, 0, 0, 0);
 
       vkCmdEndRenderPass(data->commandBuffers[i]);
 
@@ -270,8 +266,8 @@ namespace Reignite {
     data->triangleVS = loadShader(data->device, "../../../../project/shaders/basic.vert.spv");
     data->triangleFS = loadShader(data->device, "../../../../project/shaders/basic.frag.spv");
 #else
-    data->triangleVS = loadShader(data->device, "../shaders/basic.vert.spv");
-    data->triangleFS = loadShader(data->device, "../shaders/basic.frag.spv");
+    data->triangleVS = loadShader(data->device, "../shaders/vertex_normal.vert.spv");
+    data->triangleFS = loadShader(data->device, "../shaders/vertex_normal.frag.spv");
 #endif
     assert(data->triangleFS);
     assert(data->triangleVS);
@@ -313,21 +309,27 @@ namespace Reignite {
     data->textureSampler = createTextureSampler(data->device, data->texture.mipLevels);
     assert(data->textureSampler);
 
-    data->vertexBuffer = createVertexBuffer(data->device, data->physicalDevice, data->cube.vertices, data->commandPool, data->queue);
-    assert(data->vertexBuffer.buffer);
-    assert(data->vertexBuffer.bufferMemory);
+    data->cube.vertexBuffer = createVertexBuffer(data->device, data->physicalDevice, data->cube.vertices, data->commandPool, data->queue);
+    assert(data->cube.vertexBuffer.buffer);
+    assert(data->cube.vertexBuffer.bufferMemory);
 
-    data->indexBuffer = createIndexBuffer(data->device, data->physicalDevice, data->cube.indices, data->commandPool, data->queue);
-    assert(data->indexBuffer.buffer);
-    assert(data->indexBuffer.bufferMemory);
+    data->cube.indexBuffer = createIndexBuffer(data->device, data->physicalDevice, data->cube.indices, data->commandPool, data->queue);
+    assert(data->cube.indexBuffer.buffer);
+    assert(data->cube.indexBuffer.bufferMemory);
 
-    data->vertexBuffer2 = createVertexBuffer(data->device, data->physicalDevice, data->square.vertices, data->commandPool, data->queue);
-    assert(data->vertexBuffer.buffer);
-    assert(data->vertexBuffer.bufferMemory);
+#ifdef EXE_ROUTE
+    data->sphere = GeometryResourceLoadObj("../../../../project/models/geosphere.obj");
+#else
+    data->sphere = GeometryResourceLoadObj("../models/geosphere.obj");
+#endif
 
-    data->indexBuffer2 = createIndexBuffer(data->device, data->physicalDevice, data->square.indices, data->commandPool, data->queue);
-    assert(data->indexBuffer.buffer);
-    assert(data->indexBuffer.bufferMemory);
+    data->sphere.vertexBuffer = createVertexBuffer(data->device, data->physicalDevice, data->sphere.vertices, data->commandPool, data->queue);
+    assert(data->sphere.vertexBuffer.buffer);
+    assert(data->sphere.vertexBuffer.bufferMemory);
+
+    data->sphere.indexBuffer = createIndexBuffer(data->device, data->physicalDevice, data->sphere.indices, data->commandPool, data->queue);
+    assert(data->sphere.vertexBuffer.buffer);
+    assert(data->sphere.vertexBuffer.bufferMemory);
 
     createUniformBuffers(data->device, data->physicalDevice, data->swapchain, data->uniformBuffers);
 
@@ -366,8 +368,8 @@ namespace Reignite {
 
     DestroyImage(data->device, data->texture);
 
-    destroyBuffer(data->device, data->vertexBuffer);
-    destroyBuffer(data->device, data->indexBuffer);
+    DestroyGeometry(data->cube);
+    DestroyGeometry(data->sphere);
 
     vkDestroyPipeline(data->device, data->trianglePipeline, 0);
     vkDestroyPipelineLayout(data->device, data->triangleLayout, 0);

@@ -1,12 +1,28 @@
 #include "geometry_resource.h"
 
+#include "../tools.h"
 
-void CreateGeometry(Geometry& geometry) { }
+
+void CreateGeometry(Geometry& geometry) {
+  geometry.device = 0;
+  geometry.vertexBuffer = { 0, 0 };
+  geometry.indexBuffer = { 0, 0 };
+}
 
 void DestroyGeometry(Geometry& geometry) {
 
   geometry.vertices.clear();
   geometry.indices.clear();
+  destroyBuffer(geometry.device, geometry.vertexBuffer);
+  destroyBuffer(geometry.device, geometry.indexBuffer);
+}
+
+Geometry GeometryResourceLoadObj(std::string file) {
+
+  Geometry obj_geometry = {};
+  Reignite::Tools::LoadObjFile(file, obj_geometry);
+ 
+  return obj_geometry;
 }
 
 Geometry GeometryResourceCube() {
@@ -23,7 +39,7 @@ Geometry GeometryResourceSquare() {
     {{-0.5f,  0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
   };
 
-  const std::vector<uint16_t> square_indices = { 0, 1, 2, 2, 3, 0 };
+  const std::vector<u32> square_indices = { 0, 1, 2, 2, 3, 0 };
 
   Geometry square = {};
   square.vertices = square_vertices;
@@ -67,7 +83,7 @@ Geometry GeometryResourceTextureCube() {
     {{ 0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}}, // 23
   };
 
-  const std::vector<uint16_t> cube_indices{
+  const std::vector<u32> cube_indices{
     0, 1, 2, 2, 3, 0, // Top
     4, 6, 5, 6, 4, 7, // Bottom
     8, 9, 10, 10, 11, 8, // Front

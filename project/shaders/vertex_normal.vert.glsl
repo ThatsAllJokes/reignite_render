@@ -10,12 +10,10 @@ layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec2 inTexcoord;
 
-layout(location = 0) out vec4 fragColor;
-layout(location = 1) out vec2 fragTexCoord;
+layout(location = 0) out vec3 fragNormal;
 
 void main() {
 
     gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
-    fragColor = vec4(inNormal * 0.5 + vec3(0.5), 1.0);
-    fragTexCoord = inTexcoord;
+    fragNormal = inNormal;
 }

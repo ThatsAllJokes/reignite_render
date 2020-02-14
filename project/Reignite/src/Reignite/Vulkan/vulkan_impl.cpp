@@ -1,6 +1,5 @@
 #include "vulkan_impl.h"
 
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 
@@ -780,7 +779,7 @@ Buffer createVertexBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
 }
 
 Buffer createIndexBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
-  const std::vector<uint16_t>& indices, VkCommandPool commandPool, VkQueue graphicsQueue) {
+  const std::vector<u32>& indices, VkCommandPool commandPool, VkQueue graphicsQueue) {
 
   VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
@@ -895,8 +894,8 @@ void updateUniformBuffers(VkDevice device, std::vector<Buffer>& uniformBuffers, 
   vec3f position = vec3f(-1.0f, 0.0f, 0.0f);
   UniformBufferObject ubo = {};
   ubo.model = glm::translate(mat4f(1.0f), position) * glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-  ubo.view = glm::lookAt(glm::vec3(0.0f, 2.0f, -4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-  ubo.proj = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 10.0f);
+  ubo.view = glm::lookAt(glm::vec3(0.0f, 2.0f, -10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+  ubo.proj = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 100.0f);
   //ubo.proj[1][1] *= -1; // TODO: I already compensate de Y axis in the viewport. Is that correct?
 
   void* data;
@@ -907,8 +906,8 @@ void updateUniformBuffers(VkDevice device, std::vector<Buffer>& uniformBuffers, 
   position = vec3f(1.0f, 0.0f, 0.0f);
   UniformBufferObject ubo2 = {};
   ubo2.model = glm::translate(mat4f(1.0f), position) * glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-  ubo2.view = glm::lookAt(glm::vec3(0.0f, 2.0f, -4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-  ubo2.proj = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 10.0f);
+  ubo2.view = glm::lookAt(glm::vec3(0.0f, 2.0f, -10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+  ubo2.proj = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 100.0f);
   //ubo.proj[1][1] *= -1; // TODO: I already compensate de Y axis in the viewport. Is that correct?
 
   void* data2;
@@ -1226,5 +1225,3 @@ void CreateColorResources(VkDevice device, VkPhysicalDevice physicalDevice, cons
 
   colorImage.imageView = createImageView(device, colorImage.image, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 }
-
-bool LoadModelFromFile(std::string filename, VkDevice device, VkQueue copyQueue);
