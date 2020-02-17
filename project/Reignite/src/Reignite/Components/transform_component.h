@@ -3,9 +3,13 @@
 
 #include "../basic_types.h"
 
+
 namespace Reignite {
 
   struct TransformComponent {
+
+    TransformComponent();
+    TransformComponent(const TransformComponent& tc);
 
     vec3f position;
     vec3f rotation;
@@ -14,12 +18,8 @@ namespace Reignite {
     mat4f global;
     mat4f* parent_world;
   };
+
+  void UpdateTransformComponent(TransformComponent& tc);
 }
-
-typedef Reignite::TransformComponent TransformComp;
-
-bool InitTransformComponent(TransformComp& tf);
-
-void UpdateTransformComponent(TransformComp& tf);
 
 #endif // _TRANSFORM_COMPONENT_

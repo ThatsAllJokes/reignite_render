@@ -12,6 +12,7 @@
 #include "GfxResources/geometry_resource.h"
 #include "GfxResources/material_resource.h" 
 
+
 namespace Reignite {
 
   struct State {
@@ -22,7 +23,10 @@ namespace Reignite {
 
     GLFWwindow* window;
 
-    std::vector<u32> indices;
+    struct Entity {
+      std::vector<s32> entity;
+      std::vector<s32> parent;
+    } entities;
 
     CameraComponent camera;
     std::vector<TransformComponent> transform_components;

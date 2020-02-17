@@ -20,7 +20,10 @@ struct Reignite::State {
 
   GLFWwindow* window;
 
-  std::vector<u32> indices;
+  struct Entity {
+    std::vector<s32> entity;
+    std::vector<s32> parent;
+  } entities;
 
   CameraComponent camera;
   std::vector<TransformComponent> transform_components;

@@ -13,6 +13,8 @@ namespace Reignite {
       RI_CAMERA_TYPE_ORTHOGONAL
     };
 
+    CameraComponent();
+
     Type type;
     vec3f forward;
     vec3f position;
@@ -24,12 +26,10 @@ namespace Reignite {
     float near_z;
     float far_z;
   };
+
+  void UpdateCameraComponent(CameraComponent& cam_comp);
 }
 
-typedef Reignite::CameraComponent CameraComp;
 
-bool InitCameraComponent(CameraComp& tf);
-
-void UpdateCameraComponent(CameraComp& tf);
 
 #endif // _CAMERA_COMPONENT_

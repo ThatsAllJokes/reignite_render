@@ -22,7 +22,10 @@ namespace Reignite {
 
     GLFWwindow* window;
 
-    std::vector<u32> indices;
+    struct Entity {
+      std::vector<s32> entity;
+      std::vector<s32> parent;
+    } entities;
 
     CameraComponent camera;
     std::vector<TransformComponent> transform_components;
@@ -64,18 +67,13 @@ namespace Reignite {
     
     this->state = s;
 
-    InitCameraComponent(state->camera);
-
     TransformComponent tc;
-    InitTransformComponent(tc);
     state->transform_components.push_back(tc);
 
     RenderComponent rc;
-    InitRenderComponent(rc);
     state->render_components.push_back(rc);
 
     LightComponent lc;
-    InitLightComponent(lc);
     state->light_components.push_back(lc);
   }
 

@@ -3,19 +3,28 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <gtx/transform.hpp>
 
-bool InitTransformComponent(TransformComp& tf) {
 
-  tf.position = vec3f(0.0f, 0.0f, 0.0f);
-  tf.rotation = vec3f(0.0f, 0.0f, 0.0f);
-  tf.scale = vec3f(1.0f, 1.0f, 1.0f);
-  tf.local = mat4f(1.0f);
-  tf.global = mat4f(1.0f);
-  tf.parent_world = nullptr;
+Reignite::TransformComponent::TransformComponent() {
 
-  return true;
+  position = vec3f(0.0f, 0.0f, 0.0f);
+  rotation = vec3f(0.0f, 0.0f, 0.0f);
+  scale = vec3f(1.0f, 1.0f, 1.0f);
+  local = mat4f(1.0f);
+  global = mat4f(1.0f);
+  parent_world = nullptr;
 }
 
-void UpdateTransformComponent(TransformComp& tf) {
+Reignite::TransformComponent::TransformComponent(const TransformComponent& tc) {
+
+  position = tc.position;
+  rotation = tc.rotation;
+  scale = tc.scale;
+  local = tc.local;
+  global = tc.global;
+  parent_world = tc.parent_world;
+}
+
+void Reignite::UpdateTransformComponent(TransformComponent& tf) {
 
   glm::mat4 mat_transform = glm::translate(glm::mat4(1.0f), tf.position);
   glm::mat4 mat_rotation_x = glm::rotate(tf.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));

@@ -14,6 +14,8 @@ namespace Reignite {
       RI_LIGHT_TYPE_SPOTLIGHT
     };
 
+    LightComponent();
+
     Type type;
     vec3f color;
     vec3f position;
@@ -26,15 +28,9 @@ namespace Reignite {
     float fov;
     float aspect;
   };
+
+  void UpdateLightComponent(LightComponent& lc);
 }
 
-typedef Reignite::LightComponent LightComp;
-
-bool InitLightComponent(LightComp& lc);
-
-void UpdateLightComponent(LightComp& lc);
-
-void DestroyLightComponent(LightComp& lc);
-
-#endif // !_RI_LIGHT_COMPONENT_
+#endif // _RI_LIGHT_COMPONENT_
 

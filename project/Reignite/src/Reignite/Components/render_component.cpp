@@ -1,10 +1,13 @@
 #include "render_component.h"
 
 
-void InitRenderComponent(RenderComp& tf) {
+Reignite::RenderComponent::RenderComponent() {
 
+  geometry = 0;
+  material = 0;
+  texture = 0;
 }
 
-void UpdateRenderComponent(RenderComp& tf) {
+void Reignite::UpdateRenderComponent(RenderComponent& tf) {
 
 }
