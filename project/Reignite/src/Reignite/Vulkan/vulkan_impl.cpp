@@ -2,6 +2,7 @@
 
 #include <stb_image.h>
 
+#include "../render_context.h"
 
 VkInstance createInstance() {
 
@@ -882,38 +883,6 @@ VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descripto
     descriptorWrites.data(), 0, nullptr);
 
   return descriptorSet;
-}
-
-void updateUniformBuffers(VkDevice device, std::vector<Buffer>& uniformBuffers, uint32_t currentImage) {
-
-  static auto startTime = std::chrono::high_resolution_clock::now();
-
-  auto currentTime = std::chrono::high_resolution_clock::now();
-  float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-  vec3f position = vec3f(-1.0f, 0.0f, 0.0f);
-  UniformBufferObject ubo = {};
-  ubo.model = glm::translate(mat4f(1.0f), position) * glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-  ubo.view = glm::lookAt(glm::vec3(0.0f, 2.0f, -10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-  ubo.proj = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 100.0f);
-  //ubo.proj[1][1] *= -1; // TODO: I already compensate de Y axis in the viewport. Is that correct?
-
-  void* data;
-  vkMapMemory(device, uniformBuffers[0].bufferMemory, 0, sizeof(ubo), 0, &data);
-  memcpy(data, &ubo, sizeof(ubo));
-  vkUnmapMemory(device, uniformBuffers[0].bufferMemory);
-
-  position = vec3f(1.0f, 0.0f, 0.0f);
-  UniformBufferObject ubo2 = {};
-  ubo2.model = glm::translate(mat4f(1.0f), position) * glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-  ubo2.view = glm::lookAt(glm::vec3(0.0f, 2.0f, -10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-  ubo2.proj = glm::perspective(glm::radians(45.0f), 1024.0f / 768.0f, 0.1f, 100.0f);
-  //ubo.proj[1][1] *= -1; // TODO: I already compensate de Y axis in the viewport. Is that correct?
-
-  void* data2;
-  vkMapMemory(device, uniformBuffers[1].bufferMemory, 0, sizeof(ubo2), 0, &data2);
-  memcpy(data2, &ubo2, sizeof(ubo2));
-  vkUnmapMemory(device, uniformBuffers[1].bufferMemory);
 }
 
 std::vector<VkCommandBuffer> createCommandBuffer(VkDevice device, VkCommandPool commandPool, uint32_t imageCount) {

@@ -15,25 +15,26 @@ namespace Reignite {
     };
 
     Type type;
-    vec3f forward;
-    float fov;
-    float aspect;
-    float near_z;
-    float far_z;
-    float left;
-    float right;
-    float bottom;
-    float top;
+    vec3f color;
+    vec3f position;
+    vec3f direction;
     mat4f view_mat;
     mat4f projection_mat;
+
+    float far_z;
+    float near_z;
+    float fov;
+    float aspect;
   };
 }
 
 typedef Reignite::LightComponent LightComp;
 
-bool InitLightComponent(LightComp& tf);
+bool InitLightComponent(LightComp& lc);
 
-void UpdateLightComponent(LightComp& tf);
+void UpdateLightComponent(LightComp& lc);
+
+void DestroyLightComponent(LightComp& lc);
 
 #endif // !_RI_LIGHT_COMPONENT_
 

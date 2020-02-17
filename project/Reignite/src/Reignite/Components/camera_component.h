@@ -13,19 +13,16 @@ namespace Reignite {
       RI_CAMERA_TYPE_ORTHOGONAL
     };
 
-    vec3f position;
     Type type;
     vec3f forward;
+    vec3f position;
+    mat4f view_mat;
+    mat4f projection_mat;
+
     float fov;
     float aspect;
     float near_z;
     float far_z;
-    float left;
-    float right;
-    float bottom;
-    float top;
-    mat4f view_mat;
-    mat4f projection_mat;
   };
 }
 

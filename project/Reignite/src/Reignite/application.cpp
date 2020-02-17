@@ -8,19 +8,24 @@
 #include "render_context.h"
 
 #include "Components/transform_component.h"
+#include "Components/render_component.h"
+#include "Components/light_component.h"
 #include "Components/camera_component.h"
 
 struct Reignite::State {
+
   std::string title;
   u16 width;
   u16 height;
 
   GLFWwindow* window;
 
-  std::vector<u32> indices; // vector that contains every "object" id
+  std::vector<u32> indices;
 
   CameraComponent camera;
-  std::vector<TransformComponent> transforms;
+  std::vector<TransformComponent> transform_components;
+  std::vector<RenderComponent> render_components;
+  std::vector<LightComponent> light_components;
 
   State(const std::string& t = "Reignite Render",
     u16 w = 1280, u16 h = 720) : title(t), width(w), height(h) {}
@@ -44,6 +49,7 @@ void Reignite::Application::Run() {
 
     component_system->update();
 
+    render_context->setRenderInfo();
     render_context->draw();
   }
 }

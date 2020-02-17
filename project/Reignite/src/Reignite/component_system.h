@@ -13,7 +13,7 @@ namespace Reignite {
 
   struct ComponentSystemParams {
 
-    u32 max_components = 128;
+    u32 max_entities = 128;
   };
 
   class REIGNITE_API ComponentSystem {

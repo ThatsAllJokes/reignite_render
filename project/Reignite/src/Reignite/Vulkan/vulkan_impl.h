@@ -149,12 +149,11 @@ void DestroyImage(VkDevice device, Image& image);
 // UBO ////////////////////////////////////////////////////////////////////////////////////
 
 struct UniformBufferObject {
-  glm::mat4 model;
-  glm::mat4 view;
-  glm::mat4 proj;
+  mat4f model;
+  mat4f view;
+  mat4f proj;
+  vec3f cam_pos;
 };
-
-void updateUniformBuffers(VkDevice device, std::vector<Buffer>& uniformBuffers, uint32_t currentImage);
 
 
 

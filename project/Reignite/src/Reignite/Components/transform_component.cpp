@@ -7,7 +7,7 @@ bool InitTransformComponent(TransformComp& tf) {
 
   tf.position = vec3f(0.0f, 0.0f, 0.0f);
   tf.rotation = vec3f(0.0f, 0.0f, 0.0f);
-  tf.scale = vec3f(0.0f, 0.0f, 0.0f);
+  tf.scale = vec3f(1.0f, 1.0f, 1.0f);
   tf.local = mat4f(1.0f);
   tf.global = mat4f(1.0f);
   tf.parent_world = nullptr;

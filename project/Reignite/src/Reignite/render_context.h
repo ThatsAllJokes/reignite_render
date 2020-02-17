@@ -32,10 +32,14 @@ namespace Reignite {
     u32 createTexture();
     u32 createFrameBuffer();
 
-    void submitDisplayList(DisplayList* displayList = nullptr);
+    void setRenderInfo();
+
+    void submitDisplayList();
     void draw();
 
    private:
+
+    void updateUniformBuffers();
 
     void initialize(const std::shared_ptr<State> state, const RenderContextParams& params = RenderContextParams());
     void shutdown();

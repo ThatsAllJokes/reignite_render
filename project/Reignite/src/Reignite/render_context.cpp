@@ -5,6 +5,8 @@
 #include "Vulkan/vulkan_impl.h"
 
 #include "Components/transform_component.h"
+#include "Components/render_component.h"
+#include "Components/light_component.h"
 #include "Components/camera_component.h"
 
 #include "GfxResources/geometry_resource.h"
@@ -23,7 +25,9 @@ namespace Reignite {
     std::vector<u32> indices;
 
     CameraComponent camera;
-    std::vector<TransformComponent> transforms;
+    std::vector<TransformComponent> transform_components;
+    std::vector<RenderComponent> render_components;
+    std::vector<LightComponent> light_components;
 
     State(const std::string& t = "Reignite Render",
       u16 w = 1280, u16 h = 720) : title(t), width(w), height(h) {}
@@ -37,6 +41,10 @@ namespace Reignite {
 
     // Render state
     bool render_should_close;
+
+    mat4f view_matrix;
+    vec3f camera_position;
+    mat4f projection_matrix;
 
     u32 frameCounter;
     u32 lastFPS;
@@ -111,7 +119,14 @@ namespace Reignite {
     delete data;
   }
 
-  void Reignite::RenderContext::submitDisplayList(Reignite::DisplayList* displayList) {
+  void Reignite::RenderContext::setRenderInfo() {
+  
+    data->view_matrix = state->camera.view_mat;
+    data->camera_position = state->camera.position;
+    data->projection_matrix = state->camera.projection_mat;
+  }
+
+  void Reignite::RenderContext::submitDisplayList() {
 
     VK_CHECK(vkResetCommandPool(data->device, data->commandPool, 0));
 
@@ -185,7 +200,7 @@ namespace Reignite {
     uint32_t imageIndex = 0;
     VK_CHECK(vkAcquireNextImageKHR(data->device, data->swapchain.swapchain, ~0ull, data->acquireSemaphore, VK_NULL_HANDLE, &imageIndex));
 
-    updateUniformBuffers(data->device, data->uniformBuffers, imageIndex);
+    updateUniformBuffers();
 
     VkSemaphore waitSemaphores[] = { data->acquireSemaphore };
     VkSemaphore signalSemaphores[] = { data->releaseSemaphore };
@@ -216,8 +231,45 @@ namespace Reignite {
     VK_CHECK(vkDeviceWaitIdle(data->device));
   }
 
-  void Reignite::RenderContext::initialize(const std::shared_ptr<State> state, const RenderContextParams& params) {
+  void RenderContext::updateUniformBuffers() {
 
+    static auto startTime = std::chrono::high_resolution_clock::now();
+
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+    vec3f camera_pos = glm::vec3(0.0f, 2.0f, -8.0f);
+
+    vec3f position = vec3f(-1.0f, 0.0f, 0.0f);
+    UniformBufferObject ubo = {};
+    ubo.model = glm::translate(mat4f(1.0f), position) * glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    ubo.view = data->view_matrix;
+    ubo.proj = data->projection_matrix;
+    ubo.cam_pos = data->camera_position;
+    //ubo.proj[1][1] *= -1; // TODO: I already compensate de Y axis in the viewport. Is that correct?
+
+    void* mapped;
+    vkMapMemory(data->device, data->uniformBuffers[0].bufferMemory, 0, sizeof(ubo), 0, &mapped);
+    memcpy(mapped, &ubo, sizeof(ubo));
+    vkUnmapMemory(data->device, data->uniformBuffers[0].bufferMemory);
+
+    position = vec3f(1.0f, 0.0f, 0.0f);
+    UniformBufferObject ubo2 = {};
+    ubo2.model = glm::translate(mat4f(1.0f), position) * glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo2.view = data->view_matrix;
+    ubo2.proj = data->projection_matrix;
+    ubo2.cam_pos = data->camera_position;
+    //ubo.proj[1][1] *= -1; // TODO: I already compensate de Y axis in the viewport. Is that correct?
+
+    void* mapped2;
+    vkMapMemory(data->device, data->uniformBuffers[1].bufferMemory, 0, sizeof(ubo2), 0, &mapped2);
+    memcpy(mapped2, &ubo2, sizeof(ubo2));
+    vkUnmapMemory(data->device, data->uniformBuffers[1].bufferMemory);
+  }
+
+  void Reignite::RenderContext::initialize(const std::shared_ptr<State> s, const RenderContextParams& params) {
+
+    state = s;
     data->params = params;
 
     VK_CHECK(volkInitialize());

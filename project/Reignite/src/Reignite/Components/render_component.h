@@ -1,5 +1,5 @@
-#ifndef _RI_RENDER_CONTEXT_H_
-#define _RI_RENDER_CONTEXT_H_ 1
+#ifndef _RI_RENDER_COMPONENT_H_
+#define _RI_RENDER_COMPONENT_H_ 1
 
 #include "../basic_types.h"
 

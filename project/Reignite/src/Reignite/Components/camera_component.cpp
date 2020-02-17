@@ -5,19 +5,16 @@
 
 bool InitCameraComponent(CameraComp& tf) {
 
-  tf.position = vec3f(2.0f, 2.0f, 2.0f);
   tf.type = CameraComp::RI_CAMERA_TYPE_PERSPECTIVE;
   tf.forward = glm::vec3(0.0f, 0.0f, 1.0f);
+  tf.position = vec3f(0.0f, 1.0f, -6.0f);
+  tf.view_mat = glm::mat4(1.0f);
+  tf.projection_mat = glm::mat4(1.0f);
+
   tf.fov = 70.0f;
   tf.aspect = 16.0f / 9.0f;
   tf.near_z = 0.1f;
   tf.far_z = 100.0f;
-  tf.left = 100.0f;
-  tf.right = 100.0f;
-  tf.bottom = 60.0f;
-  tf.top = 60.0f;
-  tf.view_mat = glm::mat4(1.0f);
-  tf.projection_mat = glm::mat4(1.0f);
 
   return true;
 }
