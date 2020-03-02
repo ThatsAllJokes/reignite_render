@@ -68,12 +68,20 @@ namespace Reignite {
     this->state = s;
 
     TransformComponent tc;
+    tc.position = vec3f(1.0f, 0.0f, 0.0f);
     state->transform_components.push_back(tc);
+    
+    TransformComponent tc2;
+    tc2.position = vec3f(-1.0f, 0.0f, 0.0f);
+    state->transform_components.push_back(tc2);
 
     RenderComponent rc;
     state->render_components.push_back(rc);
+    state->render_components.push_back(rc);
 
     LightComponent lc;
+    lc.is_active = false;
+    state->light_components.push_back(lc);
     state->light_components.push_back(lc);
   }
 

@@ -1,12 +1,13 @@
 #ifndef _RI_RENDER_COMPONENT_H_
 #define _RI_RENDER_COMPONENT_H_ 1
 
+#include "base_component.h"
 #include "../basic_types.h"
 
 
 namespace Reignite {
 
-  struct RenderComponent {
+  struct RenderComponent : public BaseComponent {
   
     RenderComponent();
 

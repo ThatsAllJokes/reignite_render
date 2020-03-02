@@ -3,6 +3,7 @@
 #include <stb_image.h>
 
 #include "../render_context.h"
+#include "../GfxResources/material_resource.h"
 
 VkInstance createInstance() {
 
@@ -459,9 +460,16 @@ VkShaderModule loadShader(VkDevice device, const char* path) {
 
 VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout) {
 
+  VkPushConstantRange pushConstantRange = {};
+  pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  pushConstantRange.offset = 0;
+  pushConstantRange.size = sizeof(Material::PushBlock);
+
   VkPipelineLayoutCreateInfo pipelineLayoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
   pipelineLayoutInfo.setLayoutCount = 1;
   pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+  pipelineLayoutInfo.pushConstantRangeCount = 1;
+  pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
   VkPipelineLayout layout = 0;
   VK_CHECK(vkCreatePipelineLayout(device, &pipelineLayoutInfo, 0, &layout));
@@ -472,20 +480,25 @@ VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout des
 VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device) {
 
   VkDescriptorSetLayoutBinding uboLayoutBinding = {};
-  uboLayoutBinding.binding = 0;
   uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  uboLayoutBinding.binding = 0;
   uboLayoutBinding.descriptorCount = 1;
-  uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; // Stage where the uniform will be used
-  uboLayoutBinding.pImmutableSamplers = nullptr; // Optional: relevant for image sampling related descriptors
+  uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; // Stage where the uniform will be used
+  //uboLayoutBinding.pImmutableSamplers = nullptr; // Optional: relevant for image sampling related descriptors
+
+  VkDescriptorSetLayoutBinding uboLayoutBindingParams = {};
+  uboLayoutBindingParams.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  uboLayoutBindingParams.binding = 1;
+  uboLayoutBindingParams.descriptorCount = 1;
+  uboLayoutBindingParams.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
   VkDescriptorSetLayoutBinding samplerLayoutBiding = {};
-  samplerLayoutBiding.binding = 1;
-  samplerLayoutBiding.descriptorCount = 1;
   samplerLayoutBiding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  samplerLayoutBiding.pImmutableSamplers = nullptr;
+  samplerLayoutBiding.binding = 2;
+  samplerLayoutBiding.descriptorCount = 1;
   samplerLayoutBiding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-  std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBiding };
+  std::array<VkDescriptorSetLayoutBinding, 3> bindings = { uboLayoutBinding, uboLayoutBindingParams, samplerLayoutBiding };
 
   VkDescriptorSetLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
   layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -806,16 +819,34 @@ Buffer createIndexBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
   return buffer;
 }
 
-void createUniformBuffers(VkDevice device, VkPhysicalDevice physicalDevice,
-  Swapchain& swapChain, std::vector<Buffer>& uniformBuffers) {
+Buffer createUniformBuffer(VkDevice device, VkPhysicalDevice physicalDevice) {
 
   VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-  uniformBuffers.resize(swapChain.images.size());
 
-  for (size_t i = 0; i < swapChain.images.size(); ++i) {
-    createBuffer(device, physicalDevice, uniformBuffers[i], bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  }
+  Buffer uniformBufferObject;
+  createBuffer(device, physicalDevice, uniformBufferObject, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+  return uniformBufferObject;
+}
+
+void MapUniformBuffer(VkDevice device, Buffer& buffer, void* data, u32 uboSize) {
+
+  void* mapped;
+  vkMapMemory(device, buffer.bufferMemory, 0, uboSize, 0, &mapped);
+  memcpy(mapped, data, uboSize);
+  vkUnmapMemory(device, buffer.bufferMemory);
+}
+
+Buffer createUniformBufferParams(VkDevice device, VkPhysicalDevice physicalDevice) {
+
+  VkDeviceSize bufferSize = sizeof(UBOParams);
+
+  Buffer uniformBufferObject;
+  createBuffer(device, physicalDevice, uniformBufferObject, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+  return uniformBufferObject;
 }
 
 VkDescriptorPool createDescriptorPool(VkDevice device, uint32_t maxDescriptors, uint32_t maxSamplers) {
@@ -838,7 +869,7 @@ VkDescriptorPool createDescriptorPool(VkDevice device, uint32_t maxDescriptors, 
 }
 
 VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descriptorPool,
-  VkDescriptorSetLayout descriptorSetLayout, Buffer& uniformBuffer,
+  VkDescriptorSetLayout descriptorSetLayout, Buffer& uniformBuffer, Buffer& params,
   VkImageView textureImageView, VkSampler textureSampler) {
 
   VkDescriptorSetLayout layout = descriptorSetLayout;
@@ -857,12 +888,17 @@ VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descripto
   bufferInfo.offset = 0;
   bufferInfo.range = sizeof(UniformBufferObject);
 
+  VkDescriptorBufferInfo paramsInfo = {};
+  paramsInfo.buffer = params.buffer;
+  paramsInfo.offset = 0;
+  paramsInfo.range = sizeof(UBOParams);
+
   VkDescriptorImageInfo imageInfo = {};
   imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   imageInfo.imageView = textureImageView;
   imageInfo.sampler = textureSampler;
 
-  std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+  std::array<VkWriteDescriptorSet, 3> descriptorWrites = {};
   descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
   descriptorWrites[0].dstSet = descriptorSet;
   descriptorWrites[0].dstBinding = 0;
@@ -875,9 +911,17 @@ VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descripto
   descriptorWrites[1].dstSet = descriptorSet;
   descriptorWrites[1].dstBinding = 1;
   descriptorWrites[1].dstArrayElement = 0;
-  descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
   descriptorWrites[1].descriptorCount = 1;
-  descriptorWrites[1].pImageInfo = &imageInfo;
+  descriptorWrites[1].pBufferInfo = &paramsInfo;
+
+  descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  descriptorWrites[2].dstSet = descriptorSet;
+  descriptorWrites[2].dstBinding = 2;
+  descriptorWrites[2].dstArrayElement = 0;
+  descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  descriptorWrites[2].descriptorCount = 1;
+  descriptorWrites[2].pImageInfo = &imageInfo;
 
   vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()),
     descriptorWrites.data(), 0, nullptr);

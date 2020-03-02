@@ -1,12 +1,13 @@
 #ifndef _RI_LIGHT_COMPONENT_
 #define _RI_LIGHT_COMPONENT_ 1
 
+#include "base_component.h"
 #include "../basic_types.h"
 
 
 namespace Reignite {
 
-  struct LightComponent {
+  struct LightComponent : public BaseComponent {
 
     enum Type {
       RI_LIGHT_TYPE_DIRECTIONAL,

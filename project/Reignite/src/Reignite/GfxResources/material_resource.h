@@ -27,8 +27,10 @@ namespace Reignite {
       float metallic;
     } params;
 
-    VkDescriptorSet descriptorSet;
+    VkDevice device;
     Buffer uniformBuffer;
+    Buffer lightParams;
+    VkDescriptorSet descriptorSet;
   };
 
 } // end of Reignite namespace

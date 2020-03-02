@@ -1,12 +1,13 @@
 #ifndef _TRANSFORM_COMPONENT_
 #define _TRANSFORM_COMPONENT_ 1
 
+#include "base_component.h"
 #include "../basic_types.h"
 
 
 namespace Reignite {
 
-  struct TransformComponent {
+  struct TransformComponent : public BaseComponent {
 
     TransformComponent();
     TransformComponent(const TransformComponent& tc);

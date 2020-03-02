@@ -7,7 +7,7 @@ Reignite::CameraComponent::CameraComponent() {
 
   type = RI_CAMERA_TYPE_PERSPECTIVE;
   forward = glm::vec3(0.0f, 0.0f, 1.0f);
-  position = vec3f(0.0f, 1.0f, -6.0f);
+  position = vec3f(0.0f, 0.0f, -3.0f);
   view_mat = glm::mat4(1.0f);
   projection_mat = glm::mat4(1.0f);
 

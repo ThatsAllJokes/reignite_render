@@ -1,12 +1,13 @@
 #ifndef _RI_CAMERA_COMPONENT_
 #define _RI_CAMERA_COMPONENT_ 1
 
+#include "base_component.h"
 #include "../basic_types.h"
 
 
 namespace Reignite {
 
-  struct CameraComponent {
+  struct CameraComponent : public BaseComponent {
 
     enum Type {
       RI_CAMERA_TYPE_PERSPECTIVE,

@@ -2,6 +2,7 @@
 #define _RI_RENDER_CONTEXT_H_ 1
 
 #include <memory>
+#include <string>
 
 #include "core.h"
 #include "basic_types.h"
@@ -23,12 +24,18 @@ namespace Reignite {
 
   class REIGNITE_API RenderContext {
    public:
+    
+    enum GeometryEnum {
+      kGeometryEnum_Square,
+      kGeometryEnum_Cube,
+      kGeometryEnum_Load
+    };
 
     RenderContext(const std::shared_ptr<State> state);
     ~RenderContext();
 
-    u32 createGeometry();
-    u32 createMaterial();
+    u32 createGeometryResource(GeometryEnum geometry, std::string path = "");
+    u32 createMaterialResource();
     u32 createTexture();
     u32 createFrameBuffer();
 

@@ -150,10 +150,16 @@ void DestroyImage(VkDevice device, Image& image);
 
 struct UniformBufferObject {
   mat4f model;
-  mat4f view;
   mat4f proj;
+  mat4f view;
   vec3f cam_pos;
 };
+
+struct UBOParams {
+  vec4f lights[4];
+};
+
+void MapUniformBuffer(VkDevice device);
 
 
 
@@ -216,13 +222,14 @@ VkCommandBuffer BeginSingleTimeCommands(VkDevice device, VkCommandPool commandPo
 void EndSingleTimeCommands(VkDevice device, VkCommandBuffer commandBuffer, VkCommandPool commandPool,
   VkQueue graphicsQueue);
 
-void createUniformBuffers(VkDevice device, VkPhysicalDevice physicalDevice,
-  Swapchain& swapChain, std::vector<Buffer>& uniformBuffers);
+Buffer createUniformBuffer(VkDevice device, VkPhysicalDevice physicalDevice);
+
+Buffer createUniformBufferParams(VkDevice device, VkPhysicalDevice physicalDevice);
 
 VkDescriptorPool createDescriptorPool(VkDevice device, uint32_t maxDescriptors, uint32_t maxSamplers);
 
 VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descriptorPool,
-  VkDescriptorSetLayout descriptorSetLayout, Buffer& uniformBuffer,
+  VkDescriptorSetLayout descriptorSetLayout, Buffer& uniformBuffer, Buffer& param,
   VkImageView textureImageView, VkSampler textureSampler);
 
 std::vector<VkCommandBuffer> createCommandBuffer(VkDevice device, VkCommandPool commandPool, uint32_t imageCount);

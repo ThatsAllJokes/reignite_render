@@ -50,6 +50,8 @@ namespace Reignite {
     vec3f camera_position;
     mat4f projection_matrix;
 
+    std::vector<mat4f> model_list;
+
     u32 frameCounter;
     u32 lastFPS;
     // std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp;
@@ -83,6 +85,7 @@ namespace Reignite {
     VkShaderModule triangleFS;
 
     VkPipelineCache pipelineCache;
+    VkDescriptorPool descriptorPool;
     VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout triangleLayout;
     VkPipeline trianglePipeline;
@@ -98,14 +101,6 @@ namespace Reignite {
 
     VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
     VkSampler textureSampler;
-
-    Geometry cube = GeometryResourceTextureCube();
-    Geometry sphere;
-
-    std::vector<Buffer> uniformBuffers;
-
-    VkDescriptorPool descriptorPool;
-    std::vector<VkDescriptorSet> descriptorSets;
   };
 
   Reignite::RenderContext::RenderContext(const std::shared_ptr<State> s) {
@@ -123,11 +118,59 @@ namespace Reignite {
     delete data;
   }
 
+  u32 Reignite::RenderContext::createGeometryResource(GeometryEnum geometry, std::string path) {
+
+    Geometry current_geometry;
+    switch (geometry) {
+    case kGeometryEnum_Square: 
+      current_geometry = GeometryResourceSquare();
+      break;
+    case kGeometryEnum_Cube:
+      current_geometry = GeometryResourceCube();
+      break;
+    case kGeometryEnum_Load: 
+      current_geometry = GeometryResourceLoadObj(path);
+      break;
+    }
+
+    current_geometry.device = data->device;
+
+    current_geometry.vertexBuffer = createVertexBuffer(data->device, data->physicalDevice, current_geometry.vertices, data->commandPool, data->queue);
+    assert(current_geometry.vertexBuffer.buffer);
+    assert(current_geometry.vertexBuffer.bufferMemory);
+
+    current_geometry.indexBuffer = createIndexBuffer(data->device, data->physicalDevice, current_geometry.indices, data->commandPool, data->queue);
+    assert(current_geometry.indexBuffer.buffer);
+    assert(current_geometry.indexBuffer.bufferMemory);
+
+    data->geometries.push_back(current_geometry);
+    return static_cast<u32>(data->geometries.size() - 1);
+  }
+
+  u32 Reignite::RenderContext::createMaterialResource() {
+
+    MaterialResource current_material("Gold", glm::vec3(1.0f, 0.765557f, 0.336057f), 0.1f, 1.0f);
+    current_material.device = data->device;
+
+    current_material.uniformBuffer = createUniformBuffer(data->device, data->physicalDevice);
+    current_material.lightParams = createUniformBufferParams(data->device, data->physicalDevice);
+    current_material.descriptorSet = createDescriptorSets(data->device, data->descriptorPool, 
+      data->descriptorSetLayout, current_material.uniformBuffer, current_material.lightParams, 
+      data->texture.imageView, data->textureSampler);
+
+    data->materials.push_back(current_material);
+    return static_cast<u32>(data->materials.size() - 1);
+  }
+
   void Reignite::RenderContext::setRenderInfo() {
   
     data->view_matrix = state->camera.view_mat;
     data->camera_position = state->camera.position;
     data->projection_matrix = state->camera.projection_mat;
+
+    for (u32 i = 0; i < state->transform_components.size(); ++i) {
+      data->model_list.push_back(state->transform_components[i].global);
+    }
   }
 
   void Reignite::RenderContext::submitDisplayList() {
@@ -168,24 +211,28 @@ namespace Reignite {
 
       vkCmdBindPipeline(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->trianglePipeline);
 
-      std::array<VkBuffer, 2> vertexBuffers = { data->cube.vertexBuffer.buffer, data->sphere.vertexBuffer.buffer };
-      std::array<VkBuffer, 2> indexBuffers = { data->cube.indexBuffer.buffer, data->sphere.indexBuffer.buffer };
+      std::array<VkBuffer, 2> vertexBuffers = { data->geometries[0].vertexBuffer.buffer, data->geometries[1].vertexBuffer.buffer };
+      std::array<VkBuffer, 2> indexBuffers = { data->geometries[0].indexBuffer.buffer, data->geometries[1].indexBuffer.buffer };
       VkDeviceSize offset[] = { 0 };
       vkCmdBindVertexBuffers(data->commandBuffers[i], 0, 1, &vertexBuffers[0], offset);
       vkCmdBindIndexBuffer(data->commandBuffers[i], indexBuffers[0], 0, VK_INDEX_TYPE_UINT32);
 
       vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->triangleLayout, 0, 1,
-        &data->descriptorSets[0], 0, nullptr);
+        &data->materials[0].descriptorSet, 0, nullptr);
 
-      vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(data->cube.indices.size()), 1, 0, 0, 0);
+      vkCmdPushConstants(data->commandBuffers[i], data->triangleLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(MaterialResource::PushBlock), &data->materials[0].params);
+
+      vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(data->geometries[0].indices.size()), 1, 0, 0, 0);
 
       vkCmdBindVertexBuffers(data->commandBuffers[i], 0, 1, &vertexBuffers[1], offset);
       vkCmdBindIndexBuffer(data->commandBuffers[i], indexBuffers[1], 0, VK_INDEX_TYPE_UINT32);
 
       vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->triangleLayout, 0, 1,
-        &data->descriptorSets[1], 0, nullptr);
+        &data->materials[1].descriptorSet, 0, nullptr);
 
-      vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(data->sphere.indices.size()), 1, 0, 0, 0);
+      vkCmdPushConstants(data->commandBuffers[i], data->triangleLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(MaterialResource::PushBlock), &data->materials[1].params);
+
+      vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(data->geometries[1].indices.size()), 1, 0, 0, 0);
 
       vkCmdEndRenderPass(data->commandBuffers[i]);
 
@@ -242,33 +289,39 @@ namespace Reignite {
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-    vec3f camera_pos = glm::vec3(0.0f, 2.0f, -8.0f);
+    // ubo update -->
 
-    vec3f position = vec3f(-1.0f, 0.0f, 0.0f);
-    UniformBufferObject ubo = {};
-    ubo.model = glm::translate(mat4f(1.0f), position) * glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    ubo.view = data->view_matrix;
-    ubo.proj = data->projection_matrix;
-    ubo.cam_pos = data->camera_position;
-    //ubo.proj[1][1] *= -1; // TODO: I already compensate de Y axis in the viewport. Is that correct?
+    for (u32 i = 0; i < 2; ++i) {
 
-    void* mapped;
-    vkMapMemory(data->device, data->uniformBuffers[0].bufferMemory, 0, sizeof(ubo), 0, &mapped);
-    memcpy(mapped, &ubo, sizeof(ubo));
-    vkUnmapMemory(data->device, data->uniformBuffers[0].bufferMemory);
+      UniformBufferObject ubo = {};
+      ubo.model = data->model_list[i];
+      ubo.proj = data->projection_matrix;
+      ubo.view = data->view_matrix;
+      ubo.cam_pos = data->camera_position;
+      //ubo.proj[1][1] *= -1; // TODO: I already compensate de Y axis in the viewport. Is that correct?
 
-    position = vec3f(1.0f, 0.0f, 0.0f);
-    UniformBufferObject ubo2 = {};
-    ubo2.model = glm::translate(mat4f(1.0f), position) * glm::rotate(glm::mat4(1.0f), time * glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    ubo2.view = data->view_matrix;
-    ubo2.proj = data->projection_matrix;
-    ubo2.cam_pos = data->camera_position;
-    //ubo.proj[1][1] *= -1; // TODO: I already compensate de Y axis in the viewport. Is that correct?
+      void* mapped;
+      vkMapMemory(data->device, data->materials[i].uniformBuffer.bufferMemory, 0, sizeof(ubo), 0, &mapped);
+      memcpy(mapped, &ubo, sizeof(ubo));
+      vkUnmapMemory(data->device, data->materials[i].uniformBuffer.bufferMemory);
 
-    void* mapped2;
-    vkMapMemory(data->device, data->uniformBuffers[1].bufferMemory, 0, sizeof(ubo2), 0, &mapped2);
-    memcpy(mapped2, &ubo2, sizeof(ubo2));
-    vkUnmapMemory(data->device, data->uniformBuffers[1].bufferMemory);
+      //MapUniformBuffer(data->device, );
+      
+      // ubo lights update ->
+      
+      const float p = 15.0f;
+      UBOParams uboParams = {};
+      uboParams.lights[0] = glm::vec4(-p, -p * 0.5f, -p, 1.0f);
+      uboParams.lights[1] = glm::vec4(-p, -p * 0.5f, p, 1.0f);
+      uboParams.lights[2] = glm::vec4(p, -p * 0.5f, p, 1.0f);
+      uboParams.lights[3] = glm::vec4(p, -p * 0.5f, -p, 1.0f);
+
+      void* mapped3;
+      vkMapMemory(data->device, data->materials[i].lightParams.bufferMemory, 0, sizeof(uboParams), 0, &mapped3);
+      memcpy(mapped3, &uboParams, sizeof(uboParams));
+      vkUnmapMemory(data->device, data->materials[i].lightParams.bufferMemory);
+    }
+
   }
 
   void Reignite::RenderContext::initialize(const std::shared_ptr<State> s, const RenderContextParams& params) {
@@ -319,11 +372,11 @@ namespace Reignite {
     assert(data->renderPass);
 
 #ifdef EXE_ROUTE
-    data->triangleVS = loadShader(data->device, "../../../../project/shaders/basic.vert.spv");
-    data->triangleFS = loadShader(data->device, "../../../../project/shaders/basic.frag.spv");
+    data->triangleVS = loadShader(data->device, "../../../../project/shaders/pbr.vert.spv");
+    data->triangleFS = loadShader(data->device, "../../../../project/shaders/pbr.frag.spv");
 #else
-    data->triangleVS = loadShader(data->device, "../shaders/vertex_normal.vert.spv");
-    data->triangleFS = loadShader(data->device, "../shaders/vertex_normal.frag.spv");
+    data->triangleVS = loadShader(data->device, "../shaders/pbr.vert.spv");
+    data->triangleFS = loadShader(data->device, "../shaders/pbr.frag.spv");
 #endif
     assert(data->triangleFS);
     assert(data->triangleVS);
@@ -365,40 +418,19 @@ namespace Reignite {
     data->textureSampler = createTextureSampler(data->device, data->texture.mipLevels);
     assert(data->textureSampler);
 
-    data->cube.vertexBuffer = createVertexBuffer(data->device, data->physicalDevice, data->cube.vertices, data->commandPool, data->queue);
-    assert(data->cube.vertexBuffer.buffer);
-    assert(data->cube.vertexBuffer.bufferMemory);
-
-    data->cube.indexBuffer = createIndexBuffer(data->device, data->physicalDevice, data->cube.indices, data->commandPool, data->queue);
-    assert(data->cube.indexBuffer.buffer);
-    assert(data->cube.indexBuffer.bufferMemory);
-
-#ifdef EXE_ROUTE
-    data->sphere = GeometryResourceLoadObj("../../../../project/models/geosphere.obj");
-#else
-    data->sphere = GeometryResourceLoadObj("../models/geosphere.obj");
-#endif
-
-    data->sphere.vertexBuffer = createVertexBuffer(data->device, data->physicalDevice, data->sphere.vertices, data->commandPool, data->queue);
-    assert(data->sphere.vertexBuffer.buffer);
-    assert(data->sphere.vertexBuffer.bufferMemory);
-
-    data->sphere.indexBuffer = createIndexBuffer(data->device, data->physicalDevice, data->sphere.indices, data->commandPool, data->queue);
-    assert(data->sphere.vertexBuffer.buffer);
-    assert(data->sphere.vertexBuffer.bufferMemory);
-
-    createUniformBuffers(data->device, data->physicalDevice, data->swapchain, data->uniformBuffers);
-
     data->descriptorPool = createDescriptorPool(data->device, 5, 2);
     assert(data->descriptorPool);
 
-    data->descriptorSets.resize(2);
-    for (size_t i = 0; i < data->descriptorSets.size(); ++i) {
+#ifdef EXE_ROUTE
+    createGeometryResource(kGeometryEnum_Load, "../../../../project/models/box.obj");
+    createGeometryResource(kGeometryEnum_Load, "../../../../project/models/geosphere.obj");
+#else
+    createGeometryResource(kGeometryEnum_Load, "../models/box.obj");
+    createGeometryResource(kGeometryEnum_Load, "../models/geosphere.obj");
+#endif
 
-      data->descriptorSets[i] = createDescriptorSets(data->device, data->descriptorPool,
-        data->descriptorSetLayout, data->uniformBuffers[i], data->texture.imageView, data->textureSampler);
-      assert(data->descriptorSets[i]);
-    }
+    createMaterialResource();
+    createMaterialResource();
   }
 
   void Reignite::RenderContext::shutdown() {
@@ -413,8 +445,8 @@ namespace Reignite {
     DestroyImage(data->device, data->depthImage);
     destroySwapchain(data->device, data->swapchain);
 
-    for (size_t i = 0; i < data->swapchain.images.size(); ++i)
-      destroyBuffer(data->device, data->uniformBuffers[i]);
+    for (size_t i = 0; i < data->materials.size(); ++i)
+      DestroyMaterial(data->materials[i]);
 
     vkDestroyDescriptorPool(data->device, data->descriptorPool, nullptr);
 
@@ -424,8 +456,8 @@ namespace Reignite {
 
     DestroyImage(data->device, data->texture);
 
-    DestroyGeometry(data->cube);
-    DestroyGeometry(data->sphere);
+    for (u32 i = 0; i < data->geometries.size(); ++i)
+      DestroyGeometry(data->geometries[i]);
 
     vkDestroyPipeline(data->device, data->trianglePipeline, 0);
     vkDestroyPipelineLayout(data->device, data->triangleLayout, 0);
