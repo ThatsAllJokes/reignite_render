@@ -159,7 +159,7 @@ struct UBOParams {
   vec4f lights[4];
 };
 
-void MapUniformBuffer(VkDevice device);
+void MapUniformBuffer(VkDevice device, Buffer& buffer, void* data, u32 uboSize);
 
 
 

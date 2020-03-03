@@ -6,6 +6,7 @@
 
 #include "core.h"
 
+
 namespace Reignite {
 
   struct State;

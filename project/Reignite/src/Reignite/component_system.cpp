@@ -57,31 +57,36 @@ namespace Reignite {
 
   void Reignite::ComponentSystem::update() {
 
+    u32 size = 1;
+    for (u32 i = 0; i < size; ++i)
+      UpdateTransformComponent(state->transform_components[i]);
+
     UpdateCameraComponent(state->camera);
-    std::for_each(state->transform_components.begin(), state->transform_components.end(), UpdateTransformComponent);
-    std::for_each(state->render_components.begin(), state->render_components.end(), UpdateRenderComponent);
-    std::for_each(state->light_components.begin(), state->light_components.end(), UpdateLightComponent);
+
+    for (u32 i = 0; i < size; ++i)
+      UpdateRenderComponent(state->render_components[i]);
+
+    for (u32 i = 0; i < size; ++i)
+      UpdateLightComponent(state->light_components[i]);
+
   }
 
   void Reignite::ComponentSystem::initialize(const std::shared_ptr<State> s) {
     
     this->state = s;
 
+    state->entities.entity.push_back(state->entities.entity.size());
+    state->entities.parent.push_back(state->entities.parent.size());
+
     TransformComponent tc;
-    tc.position = vec3f(1.0f, 0.0f, 0.0f);
+    tc.position = vec3f(0.0f, 0.0f, 0.0f);
     state->transform_components.push_back(tc);
-    
-    TransformComponent tc2;
-    tc2.position = vec3f(-1.0f, 0.0f, 0.0f);
-    state->transform_components.push_back(tc2);
 
     RenderComponent rc;
-    state->render_components.push_back(rc);
     state->render_components.push_back(rc);
 
     LightComponent lc;
     lc.is_active = false;
-    state->light_components.push_back(lc);
     state->light_components.push_back(lc);
   }
 

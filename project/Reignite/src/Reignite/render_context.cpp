@@ -214,25 +214,19 @@ namespace Reignite {
       std::array<VkBuffer, 2> vertexBuffers = { data->geometries[0].vertexBuffer.buffer, data->geometries[1].vertexBuffer.buffer };
       std::array<VkBuffer, 2> indexBuffers = { data->geometries[0].indexBuffer.buffer, data->geometries[1].indexBuffer.buffer };
       VkDeviceSize offset[] = { 0 };
-      vkCmdBindVertexBuffers(data->commandBuffers[i], 0, 1, &vertexBuffers[0], offset);
-      vkCmdBindIndexBuffer(data->commandBuffers[i], indexBuffers[0], 0, VK_INDEX_TYPE_UINT32);
 
-      vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->triangleLayout, 0, 1,
-        &data->materials[0].descriptorSet, 0, nullptr);
+      for (u32 j = 0; j < 1; ++j) {
 
-      vkCmdPushConstants(data->commandBuffers[i], data->triangleLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(MaterialResource::PushBlock), &data->materials[0].params);
+        vkCmdBindVertexBuffers(data->commandBuffers[i], 0, 1, &vertexBuffers[j], offset);
+        vkCmdBindIndexBuffer(data->commandBuffers[i], indexBuffers[j], 0, VK_INDEX_TYPE_UINT32);
 
-      vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(data->geometries[0].indices.size()), 1, 0, 0, 0);
+        vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->triangleLayout, 0, 1,
+          &data->materials[j].descriptorSet, 0, nullptr);
 
-      vkCmdBindVertexBuffers(data->commandBuffers[i], 0, 1, &vertexBuffers[1], offset);
-      vkCmdBindIndexBuffer(data->commandBuffers[i], indexBuffers[1], 0, VK_INDEX_TYPE_UINT32);
+        vkCmdPushConstants(data->commandBuffers[i], data->triangleLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(MaterialResource::PushBlock), &data->materials[j].params);
 
-      vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->triangleLayout, 0, 1,
-        &data->materials[1].descriptorSet, 0, nullptr);
-
-      vkCmdPushConstants(data->commandBuffers[i], data->triangleLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(MaterialResource::PushBlock), &data->materials[1].params);
-
-      vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(data->geometries[1].indices.size()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(data->commandBuffers[i], static_cast<uint32_t>(data->geometries[j].indices.size()), 1, 0, 0, 0);
+      }
 
       vkCmdEndRenderPass(data->commandBuffers[i]);
 
@@ -289,10 +283,9 @@ namespace Reignite {
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-    // ubo update -->
+    for (u32 i = 0; i < 1; ++i) {
 
-    for (u32 i = 0; i < 2; ++i) {
-
+      // ubo update -->
       UniformBufferObject ubo = {};
       ubo.model = data->model_list[i];
       ubo.proj = data->projection_matrix;
@@ -300,15 +293,9 @@ namespace Reignite {
       ubo.cam_pos = data->camera_position;
       //ubo.proj[1][1] *= -1; // TODO: I already compensate de Y axis in the viewport. Is that correct?
 
-      void* mapped;
-      vkMapMemory(data->device, data->materials[i].uniformBuffer.bufferMemory, 0, sizeof(ubo), 0, &mapped);
-      memcpy(mapped, &ubo, sizeof(ubo));
-      vkUnmapMemory(data->device, data->materials[i].uniformBuffer.bufferMemory);
-
-      //MapUniformBuffer(data->device, );
+      MapUniformBuffer(data->device, data->materials[i].uniformBuffer, &ubo, sizeof(ubo));
       
       // ubo lights update ->
-      
       const float p = 15.0f;
       UBOParams uboParams = {};
       uboParams.lights[0] = glm::vec4(-p, -p * 0.5f, -p, 1.0f);
@@ -316,10 +303,7 @@ namespace Reignite {
       uboParams.lights[2] = glm::vec4(p, -p * 0.5f, p, 1.0f);
       uboParams.lights[3] = glm::vec4(p, -p * 0.5f, -p, 1.0f);
 
-      void* mapped3;
-      vkMapMemory(data->device, data->materials[i].lightParams.bufferMemory, 0, sizeof(uboParams), 0, &mapped3);
-      memcpy(mapped3, &uboParams, sizeof(uboParams));
-      vkUnmapMemory(data->device, data->materials[i].lightParams.bufferMemory);
+      MapUniformBuffer(data->device, data->materials[i].lightParams, &uboParams, sizeof(uboParams));
     }
 
   }
@@ -422,14 +406,14 @@ namespace Reignite {
     assert(data->descriptorPool);
 
 #ifdef EXE_ROUTE
-    createGeometryResource(kGeometryEnum_Load, "../../../../project/models/box.obj");
     createGeometryResource(kGeometryEnum_Load, "../../../../project/models/geosphere.obj");
+    createGeometryResource(kGeometryEnum_Load, "../../../../project/models/box.obj");
 #else
-    createGeometryResource(kGeometryEnum_Load, "../models/box.obj");
     createGeometryResource(kGeometryEnum_Load, "../models/geosphere.obj");
+    createGeometryResource(kGeometryEnum_Load, "../models/box.obj");
 #endif
 
-    createMaterialResource();
+    //createMaterialResource();
     createMaterialResource();
   }
 

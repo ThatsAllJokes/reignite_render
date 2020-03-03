@@ -12,68 +12,74 @@
 #include "Components/light_component.h"
 #include "Components/camera_component.h"
 
-struct Reignite::State {
 
-  std::string title;
-  u16 width;
-  u16 height;
+namespace Reignite {
 
-  GLFWwindow* window;
+  struct State {
 
-  struct Entity {
-    std::vector<s32> entity;
-    std::vector<s32> parent;
-  } entities;
+    std::string title;
+    u16 width;
+    u16 height;
 
-  CameraComponent camera;
-  std::vector<TransformComponent> transform_components;
-  std::vector<RenderComponent> render_components;
-  std::vector<LightComponent> light_components;
+    GLFWwindow* window;
 
-  State(const std::string& t = "Reignite Render",
-    u16 w = 1280, u16 h = 720) : title(t), width(w), height(h) {}
-};
+    struct Entity {
+      std::vector<s32> entity;
+      std::vector<s32> parent;
+    } entities;
 
-Reignite::Application::Application() {
+    CameraComponent camera;
+    std::vector<TransformComponent> transform_components;
+    std::vector<RenderComponent> render_components;
+    std::vector<LightComponent> light_components;
 
-  initialize();
-}
+    State(const std::string& t = "Reignite Render",
+      u16 w = 1280, u16 h = 720) : title(t), width(w), height(h) {}
+  };
 
-Reignite::Application::~Application() {
+  Application::Application() {
 
-  shutdown();
-}
-
-void Reignite::Application::Run() {
-
-  while (!window->closeWindow() && is_running) {
-
-    window->update();
-
-    component_system->update();
-
-    render_context->setRenderInfo();
-    render_context->draw();
+    initialize();
   }
+
+  Application::~Application() {
+
+    shutdown();
+  }
+
+  void Application::Run() {
+
+    while (!window->closeWindow() && is_running) {
+
+      window->update();
+
+      component_system->update();
+
+      render_context->setRenderInfo();
+      render_context->draw();
+    }
+  }
+
+  void Application::initialize() {
+
+    state = std::shared_ptr<State>(new State());
+
+    window = std::unique_ptr<Window>(Window::Create(state));
+    component_system = std::unique_ptr<ComponentSystem>(new ComponentSystem(state));
+    render_context = std::unique_ptr<RenderContext>(new RenderContext(state));
+
+    render_context->submitDisplayList();
+
+    is_running = true;
+  }
+
+  void Application::shutdown() {
+
+    is_running = false;
+  }
+
 }
 
-void Reignite::Application::initialize() {
-
-  state = std::shared_ptr<State>(new State());
-
-  window = std::unique_ptr<Window>(Window::Create(state));
-  component_system = std::unique_ptr<ComponentSystem>(new ComponentSystem(state));
-  render_context = std::unique_ptr<RenderContext>(new RenderContext(state));
-
-  render_context->submitDisplayList();
-
-  is_running = true;
-}
-
-void Reignite::Application::shutdown() {
-
-  is_running = false;
-}
 
 
 
