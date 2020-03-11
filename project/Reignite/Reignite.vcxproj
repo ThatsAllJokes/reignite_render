@@ -68,7 +68,8 @@
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PrecompiledHeader></PrecompiledHeader>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <ProgramDataBaseFileName>$(IntDir)Reignite.compile.pdb</ProgramDataBaseFileName>
@@ -89,7 +90,7 @@
       <TargetMachine>MachineX64</TargetMachine>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y &quot;$(SolutionDir)..\bin\Debug\x64\Reignite\*.dll&quot; &quot;$(SolutionDir)..\bin\Debug\x64\Render\*.dll&quot;</Command>
+      <Command>copy /Y "$(SolutionDir)..\bin\Debug\x64\Reignite\*.dll" "$(SolutionDir)..\bin\Debug\x64\Render\*.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -103,9 +104,11 @@
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <PrecompiledHeader></PrecompiledHeader>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <DebugInformationFormat></DebugInformationFormat>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
       <DiagnosticsFormat>Caret</DiagnosticsFormat>
     </ClCompile>
     <ResourceCompile>
@@ -369,6 +372,7 @@
     <ClInclude Include="src\Reignite\render_context.h" />
     <ClInclude Include="src\Reignite\timer.h" />
     <ClInclude Include="src\Reignite\tools.h" />
+    <ClInclude Include="src\Reignite\Vulkan\vulkan_initializers.h" />
     <ClInclude Include="src\Reignite\window.h" />
     <ClInclude Include="src\Reignite\Commands\base_command.h" />
     <ClInclude Include="src\Reignite\Commands\clear_command.h" />
@@ -425,7 +429,8 @@
 </Command>
       <Outputs>../shaders/%(Filename).spv;%(Outputs)</Outputs>
       <SubType>Designer</SubType>
-      <Message></Message>
+      <Message>
+      </Message>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>

@@ -276,7 +276,7 @@ VkSemaphore createSemaphore(VkDevice device) {
 
 VkCommandPool createCommandPool(VkDevice device, uint32_t familyIndex) {
 
-  VkCommandPoolCreateInfo createInfo = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+  VkCommandPoolCreateInfo createInfo = vk::initializers::CommandPoolCreateInfo();
   createInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
   createInfo.queueFamilyIndex = familyIndex;
 
@@ -378,7 +378,7 @@ VkRenderPass createRenderPass(VkDevice device, VkPhysicalDevice physicalDevice, 
   std::array<VkAttachmentDescription, 3> attachments = {
     colorAttachment, depthAttachment, colorAttachmentResolve };
 
-  VkRenderPassCreateInfo createInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO };
+  VkRenderPassCreateInfo createInfo = vk::initializers::RenderPassCreateInfo();
   createInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
   createInfo.pAttachments = attachments.data();
   createInfo.subpassCount = 1;
@@ -415,7 +415,7 @@ VkFramebuffer createFramebuffer(VkDevice device, VkRenderPass renderPass,
 VkImageView createImageView(VkDevice device, VkImage image, VkFormat format,
   VkImageAspectFlags aspectFlags, uint32_t mipLevels) {
 
-  VkImageViewCreateInfo createInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+  VkImageViewCreateInfo createInfo = vk::initializers::ImageViewCreateInfo();
   createInfo.image = image;
   createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
   createInfo.format = format;
@@ -460,14 +460,11 @@ VkShaderModule loadShader(VkDevice device, const char* path) {
 
 VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout) {
 
-  VkPushConstantRange pushConstantRange = {};
-  pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-  pushConstantRange.offset = 0;
-  pushConstantRange.size = sizeof(Material::PushBlock);
+  VkPushConstantRange pushConstantRange = 
+    vk::initializers::PushConstantRange(VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(Material::PushBlock), 0);
 
-  VkPipelineLayoutCreateInfo pipelineLayoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-  pipelineLayoutInfo.setLayoutCount = 1;
-  pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+  VkPipelineLayoutCreateInfo pipelineLayoutInfo = 
+    vk::initializers::PipelineLayoutCreateInfo(&descriptorSetLayout);
   pipelineLayoutInfo.pushConstantRangeCount = 1;
   pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
@@ -479,30 +476,19 @@ VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout des
 
 VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device) {
 
-  VkDescriptorSetLayoutBinding uboLayoutBinding = {};
-  uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  uboLayoutBinding.binding = 0;
-  uboLayoutBinding.descriptorCount = 1;
-  uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT; // Stage where the uniform will be used
-  //uboLayoutBinding.pImmutableSamplers = nullptr; // Optional: relevant for image sampling related descriptors
+  std::vector<VkDescriptorSetLayoutBinding> bindings = { 
+    
+    vk::initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0),
 
-  VkDescriptorSetLayoutBinding uboLayoutBindingParams = {};
-  uboLayoutBindingParams.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  uboLayoutBindingParams.binding = 1;
-  uboLayoutBindingParams.descriptorCount = 1;
-  uboLayoutBindingParams.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    vk::initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      VK_SHADER_STAGE_FRAGMENT_BIT, 1),
 
-  VkDescriptorSetLayoutBinding samplerLayoutBiding = {};
-  samplerLayoutBiding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  samplerLayoutBiding.binding = 2;
-  samplerLayoutBiding.descriptorCount = 1;
-  samplerLayoutBiding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    vk::initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      VK_SHADER_STAGE_FRAGMENT_BIT, 2),
+  };
 
-  std::array<VkDescriptorSetLayoutBinding, 3> bindings = { uboLayoutBinding, uboLayoutBindingParams, samplerLayoutBiding };
-
-  VkDescriptorSetLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-  layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-  layoutInfo.pBindings = bindings.data();
+  VkDescriptorSetLayoutCreateInfo layoutInfo = vk::initializers::DescriptorSetLayoutCreateInfo(bindings);
 
   VkDescriptorSetLayout descriptorSetLayout;
   VK_CHECK(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout));
@@ -512,8 +498,6 @@ VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device) {
 
 VkPipeline createGraphicsPipeline(VkDevice device, VkPipelineCache pipelineCache, VkRenderPass renderPass,
   VkShaderModule vs, VkShaderModule fs, VkPipelineLayout layout, VkSampleCountFlagBits msaaSamples) {
-
-  VkGraphicsPipelineCreateInfo createInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
 
   VkPipelineShaderStageCreateInfo stages[2] = {};
   stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -525,6 +509,7 @@ VkPipeline createGraphicsPipeline(VkDevice device, VkPipelineCache pipelineCache
   stages[1].module = fs;
   stages[1].pName = "main";
 
+  VkGraphicsPipelineCreateInfo createInfo = vk::initializers::GraphicsPipelineCreateInfo();
   createInfo.stageCount = sizeof(stages) / sizeof(stages[0]);
   createInfo.pStages = stages;
 
@@ -542,9 +527,9 @@ VkPipeline createGraphicsPipeline(VkDevice device, VkPipelineCache pipelineCache
   inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   createInfo.pInputAssemblyState = &inputAssembly;
 
-  VkPipelineViewportStateCreateInfo viewportState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-  viewportState.viewportCount = 1;
-  viewportState.scissorCount = 1;
+  VkPipelineViewportStateCreateInfo viewportState =
+    vk::initializers::PipelineViewportStateCreateInfo(1, 1);
+
   createInfo.pViewportState = &viewportState;
 
   VkPipelineRasterizationStateCreateInfo rasterizationState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
@@ -553,35 +538,31 @@ VkPipeline createGraphicsPipeline(VkDevice device, VkPipelineCache pipelineCache
   rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
   createInfo.pRasterizationState = &rasterizationState;
 
-  VkPipelineMultisampleStateCreateInfo multisampleState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-  multisampleState.rasterizationSamples = msaaSamples;
+  VkPipelineMultisampleStateCreateInfo multisampleState = 
+    vk::initializers::PipelineMultisampleStateCreateInfo(msaaSamples);
   createInfo.pMultisampleState = &multisampleState;
 
-  VkPipelineDepthStencilStateCreateInfo depthstencilState = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-  depthstencilState.depthTestEnable = VK_TRUE;
-  depthstencilState.depthWriteEnable = VK_TRUE;
-  depthstencilState.depthCompareOp = VK_COMPARE_OP_LESS;
+  VkPipelineDepthStencilStateCreateInfo depthstencilState =
+    vk::initializers::PipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS);
   depthstencilState.depthBoundsTestEnable = VK_FALSE;
   depthstencilState.minDepthBounds = 0.0f;
   depthstencilState.maxDepthBounds = 1.0f;
   depthstencilState.stencilTestEnable = VK_FALSE;
   depthstencilState.front = {};
-  depthstencilState.back = {};
   createInfo.pDepthStencilState = &depthstencilState;
 
-  VkPipelineColorBlendAttachmentState colorAttachmentState = { };
-  colorAttachmentState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+  VkPipelineColorBlendAttachmentState colorAttachmentState = 
+    vk::initializers::PipelineColorBlendAttachmentState(
+      VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | 
+      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE);
 
-  VkPipelineColorBlendStateCreateInfo colorblendState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-  colorblendState.attachmentCount = 1;
-  colorblendState.pAttachments = &colorAttachmentState;
+  VkPipelineColorBlendStateCreateInfo colorblendState =
+    vk::initializers::PipelineColorBlendStateCreateInfo(1 , &colorAttachmentState);
   createInfo.pColorBlendState = &colorblendState;
 
   VkDynamicState dynamicStates[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-
-  VkPipelineDynamicStateCreateInfo dynamicState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-  dynamicState.dynamicStateCount = sizeof(dynamicStates) / sizeof(dynamicStates[0]);
-  dynamicState.pDynamicStates = dynamicStates;
+  VkPipelineDynamicStateCreateInfo dynamicState = 
+    vk::initializers::PipelineDynamicStateCreateInfo(dynamicStates, 2);
   createInfo.pDynamicState = &dynamicState;
 
   createInfo.layout = layout;
@@ -690,9 +671,7 @@ void resizeSwapchainIfNecessary(Swapchain& result, VkPhysicalDevice physicalDevi
 void createBuffer(VkDevice device, VkPhysicalDevice physicalDevice, Buffer& buffer,
   VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) {
 
-  VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-  bufferInfo.size = size;
-  bufferInfo.usage = usage;
+  VkBufferCreateInfo bufferInfo = vk::initializers::BufferCreateInfo(usage, size);
   bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
   buffer.buffer;
@@ -701,7 +680,7 @@ void createBuffer(VkDevice device, VkPhysicalDevice physicalDevice, Buffer& buff
   VkMemoryRequirements memRequirements;
   vkGetBufferMemoryRequirements(device, buffer.buffer, &memRequirements);
 
-  VkMemoryAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+  VkMemoryAllocateInfo allocInfo = vk::initializers::MemoryAllocateInfo();
   allocInfo.allocationSize = memRequirements.size;
   allocInfo.memoryTypeIndex = findMemoryType(physicalDevice, memRequirements.memoryTypeBits, properties);
 
@@ -718,17 +697,13 @@ void destroyBuffer(VkDevice device, const Buffer& buffer) {
 
 VkCommandBuffer BeginSingleTimeCommands(VkDevice device, VkCommandPool commandPool) {
 
-  VkCommandBufferAllocateInfo allocInfo = {};
-  allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocInfo.commandPool = commandPool;
-  allocInfo.commandBufferCount = 1;
+  VkCommandBufferAllocateInfo allocInfo = vk::initializers::CommandBufferAllocateInfo(
+    commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
 
   VkCommandBuffer commandBuffer;
   vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
 
-  VkCommandBufferBeginInfo beginInfo = {};
-  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  VkCommandBufferBeginInfo beginInfo = vk::initializers::CommandBufferBeginInfo();
   beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
   vkBeginCommandBuffer(commandBuffer, &beginInfo);
@@ -740,8 +715,7 @@ void EndSingleTimeCommands(VkDevice device, VkCommandBuffer commandBuffer, VkCom
 
   vkEndCommandBuffer(commandBuffer);
 
-  VkSubmitInfo submitInfo = {};
-  submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  VkSubmitInfo submitInfo = vk::initializers::SubmitInfo();
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &commandBuffer;
 
@@ -851,16 +825,13 @@ Buffer createUniformBufferParams(VkDevice device, VkPhysicalDevice physicalDevic
 
 VkDescriptorPool createDescriptorPool(VkDevice device, uint32_t maxDescriptors, uint32_t maxSamplers) {
 
-  std::array<VkDescriptorPoolSize, 2> poolSizes = {};
-  poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  poolSizes[0].descriptorCount = maxDescriptors;
-  poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  poolSizes[1].descriptorCount = maxSamplers;
+  std::vector<VkDescriptorPoolSize> poolSizes = {
+    vk::initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, maxDescriptors),
+    vk::initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxSamplers)
+  };
 
-  VkDescriptorPoolCreateInfo poolInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-  poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-  poolInfo.pPoolSizes = poolSizes.data();
-  poolInfo.maxSets = maxDescriptors;
+  VkDescriptorPoolCreateInfo poolInfo = 
+    vk::initializers::DescriptorPoolCreateInfo(poolSizes, maxDescriptors);
 
   VkDescriptorPool descriptorPool;
   VK_CHECK(vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool));
@@ -872,13 +843,8 @@ VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descripto
   VkDescriptorSetLayout descriptorSetLayout, Buffer& uniformBuffer, Buffer& params,
   VkImageView textureImageView, VkSampler textureSampler) {
 
-  VkDescriptorSetLayout layout = descriptorSetLayout;
-
-  VkDescriptorSetAllocateInfo allocInfo = {};
-  allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-  allocInfo.descriptorPool = descriptorPool;
-  allocInfo.descriptorSetCount = 1;
-  allocInfo.pSetLayouts = &layout;
+  VkDescriptorSetAllocateInfo allocInfo = 
+    vk::initializers::DescriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
 
   VkDescriptorSet descriptorSet;
   VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet));
@@ -893,35 +859,20 @@ VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descripto
   paramsInfo.offset = 0;
   paramsInfo.range = sizeof(UBOParams);
 
-  VkDescriptorImageInfo imageInfo = {};
-  imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  imageInfo.imageView = textureImageView;
-  imageInfo.sampler = textureSampler;
+  VkDescriptorImageInfo imageInfo = vk::initializers::DescriptorImageInfo(
+    textureSampler, textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-  std::array<VkWriteDescriptorSet, 3> descriptorWrites = {};
-  descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  descriptorWrites[0].dstSet = descriptorSet;
-  descriptorWrites[0].dstBinding = 0;
-  descriptorWrites[0].dstArrayElement = 0;
-  descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  descriptorWrites[0].descriptorCount = 1;
-  descriptorWrites[0].pBufferInfo = &bufferInfo;
+  std::array<VkWriteDescriptorSet, 3> descriptorWrites = {
+  
+    vk::initializers::WriteDescriptorSet(descriptorSet, 
+      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &bufferInfo),
 
-  descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  descriptorWrites[1].dstSet = descriptorSet;
-  descriptorWrites[1].dstBinding = 1;
-  descriptorWrites[1].dstArrayElement = 0;
-  descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  descriptorWrites[1].descriptorCount = 1;
-  descriptorWrites[1].pBufferInfo = &paramsInfo;
+    vk::initializers::WriteDescriptorSet(descriptorSet,
+      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, &paramsInfo),
 
-  descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  descriptorWrites[2].dstSet = descriptorSet;
-  descriptorWrites[2].dstBinding = 2;
-  descriptorWrites[2].dstArrayElement = 0;
-  descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  descriptorWrites[2].descriptorCount = 1;
-  descriptorWrites[2].pImageInfo = &imageInfo;
+    vk::initializers::WriteDescriptorSet(descriptorSet,
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &imageInfo)
+  };
 
   vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()),
     descriptorWrites.data(), 0, nullptr);
@@ -931,13 +882,10 @@ VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descripto
 
 std::vector<VkCommandBuffer> createCommandBuffer(VkDevice device, VkCommandPool commandPool, uint32_t imageCount) {
 
+  VkCommandBufferAllocateInfo allocateInfo = vk::initializers::CommandBufferAllocateInfo(
+    commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, imageCount);
+
   std::vector<VkCommandBuffer> commandBuffers(imageCount);
-
-  VkCommandBufferAllocateInfo allocateInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-  allocateInfo.commandPool = commandPool;
-  allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocateInfo.commandBufferCount = imageCount;
-
   VK_CHECK(vkAllocateCommandBuffers(device, &allocateInfo, commandBuffers.data()));
 
   return commandBuffers;
@@ -1014,7 +962,7 @@ void createImage(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t widt
   uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
   VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
 
-  VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+  VkImageCreateInfo imageInfo = vk::initializers::ImageCreateInfo();
   imageInfo.imageType = VK_IMAGE_TYPE_2D;
   imageInfo.extent.width = width;
   imageInfo.extent.height = height;
@@ -1033,7 +981,7 @@ void createImage(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t widt
   VkMemoryRequirements memRequirements;
   vkGetImageMemoryRequirements(device, image, &memRequirements);
 
-  VkMemoryAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+  VkMemoryAllocateInfo allocInfo = vk::initializers::MemoryAllocateInfo();
   allocInfo.allocationSize = memRequirements.size;
   allocInfo.memoryTypeIndex = findMemoryType(physicalDevice, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
@@ -1187,7 +1135,7 @@ VkImageView createTextureImageView(VkDevice device, VkImage image, VkFormat form
 
 VkSampler createTextureSampler(VkDevice device, uint32_t mipLevels) {
 
-  VkSamplerCreateInfo samplerInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
+  VkSamplerCreateInfo samplerInfo = vk::initializers::SamplerCreateInfo();
   samplerInfo.magFilter = VK_FILTER_LINEAR;
   samplerInfo.minFilter = VK_FILTER_LINEAR;
   samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;

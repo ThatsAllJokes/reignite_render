@@ -57,18 +57,18 @@ namespace Reignite {
     // std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp;
 
     // Vulkan
-    VkDebugReportCallbackEXT debugCallback;
-
     VkInstance instance;
+    VkDebugReportCallbackEXT debugCallback;
 
     VkPhysicalDevice physicalDevices[16];
     uint32_t physicalDeviceCount;
-
+    
     VkPhysicalDevice physicalDevice;
-    uint32_t familyIndex;
-
     VkDevice device;
 
+    VkCommandPool commandPool;
+
+    uint32_t familyIndex;
     VkSurfaceKHR surface;
 
     VkBool32 presentSupported;
@@ -92,7 +92,6 @@ namespace Reignite {
 
     Swapchain swapchain;
 
-    VkCommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers;
 
     Image colorImage;
@@ -179,7 +178,7 @@ namespace Reignite {
 
     for (u32 i = 0; i < data->swapchain.imageCount; ++i) {
 
-      VkCommandBufferBeginInfo beginInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+      VkCommandBufferBeginInfo beginInfo = vk::initializers::CommandBufferBeginInfo();
       //beginInfo.flags
 
       VK_CHECK(vkBeginCommandBuffer(data->commandBuffers[i], &beginInfo));
@@ -192,7 +191,7 @@ namespace Reignite {
       clearValues[0].color = clearColor;
       clearValues[1].depthStencil = { 1.0f, 0 };
 
-      VkRenderPassBeginInfo passbeginInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+      VkRenderPassBeginInfo passbeginInfo = vk::initializers::RenderPassBeginInfo();
       passbeginInfo.renderPass = data->renderPass;
       passbeginInfo.framebuffer = data->swapchain.framebuffers[i];
       passbeginInfo.renderArea.extent.width = data->swapchain.width;
@@ -251,7 +250,7 @@ namespace Reignite {
     VkSemaphore signalSemaphores[] = { data->releaseSemaphore };
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
-    VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+    VkSubmitInfo submitInfo = vk::initializers::SubmitInfo();
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
@@ -296,12 +295,12 @@ namespace Reignite {
       MapUniformBuffer(data->device, data->materials[i].uniformBuffer, &ubo, sizeof(ubo));
       
       // ubo lights update ->
-      const float p = 15.0f;
+      const float p = 10.0f;
       UBOParams uboParams = {};
-      uboParams.lights[0] = glm::vec4(-p, -p * 0.5f, -p, 1.0f);
-      uboParams.lights[1] = glm::vec4(-p, -p * 0.5f, p, 1.0f);
-      uboParams.lights[2] = glm::vec4(p, -p * 0.5f, p, 1.0f);
-      uboParams.lights[3] = glm::vec4(p, -p * 0.5f, -p, 1.0f);
+      uboParams.lights[0] = glm::vec4(-p, 0.0f, -p, 1.0f);
+      uboParams.lights[1] = glm::vec4(-p, 0.0f, p, 1.0f);
+      uboParams.lights[2] = glm::vec4(p, 0.0f, p, 1.0f);
+      uboParams.lights[3] = glm::vec4(p, 0.0f, -p, 1.0f);
 
       MapUniformBuffer(data->device, data->materials[i].lightParams, &uboParams, sizeof(uboParams));
     }

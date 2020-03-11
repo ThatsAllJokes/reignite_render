@@ -825,6 +825,9 @@
     <ClInclude Include="src\Reignite\Vulkan\vulkan_impl.h">
       <Filter>src\Reignite\Vulkan</Filter>
     </ClInclude>
+    <ClInclude Include="src\Reignite\Vulkan\vulkan_initializers.h">
+      <Filter>src\Reignite\Vulkan</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\extern\volk\volk.c">
@@ -883,5 +886,10 @@
     <CustomBuild Include="..\shaders\*.glsl">
       <Filter>shaders</Filter>
     </CustomBuild>
+    <CustomBuild Include="..\shaders\*.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl" />
+    <CustomBuild Include="..\shaders\*.glsl" />
   </ItemGroup>
 </Project>

@@ -19,6 +19,8 @@
 #include <gtc/matrix_transform.hpp>
 
 #include <volk.h>
+#include "vulkan_initializers.h"
+
 
 #include "../basic_types.h"
 #include "../log.h"
@@ -105,9 +107,12 @@ void resizeSwapchainIfNecessary(Swapchain& result, VkPhysicalDevice physicalDevi
   VkDevice device, VkSurfaceKHR surface, uint32_t familyIndex, VkFormat format,
   VkRenderPass renderPass, VkImageView depthImageView);
 
+VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window);
+
 // BUFFER ///////////////////////////////////////////////////////////////////////////////////
 
 struct Buffer {
+  VkDevice device;
   VkBuffer buffer;
   VkDeviceMemory bufferMemory;
   void* mapped = nullptr;
@@ -162,6 +167,13 @@ struct UBOParams {
 void MapUniformBuffer(VkDevice device, Buffer& buffer, void* data, u32 uboSize);
 
 
+// DEVICE ////////////////////////////////////////////////////////////////////////////////
+
+struct VulkanDevice{
+
+  VkPhysicalDevice physicalDevice;
+  VkDevice logicalDevice;
+};
 
 VkInstance createInstance();
 
@@ -170,7 +182,23 @@ VkBool32 debugReportCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTyp
 
 VkDebugReportCallbackEXT registerDebugCallback(VkInstance instance);
 
+uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
 uint32_t getGraphicsFamilyIndex(VkPhysicalDevice physicalDevice);
+
+VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint32_t familyIndex);
+
+VkCommandPool createCommandPool(VkDevice device, uint32_t familyIndex);
+
+std::vector<VkCommandBuffer> createCommandBuffer(VkDevice device, VkCommandPool commandPool, uint32_t imageCount);
+
+VkFormat FindSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates,
+  VkImageTiling tiling, VkFormatFeatureFlags features);
+
+VkFormat FindDepthFormat(VkPhysicalDevice physicalDevice);
+
+
+
 
 bool supportsPresentation(VkPhysicalDevice physicalDevice, uint32_t familyIndex);
 
@@ -179,20 +207,8 @@ VkSampleCountFlagBits getMaxUsableSampleCount(VkPhysicalDevice physicalDevice);
 VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t physicalDeviceCount,
   VkSampleCountFlagBits& msaaSamples);
 
-VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint32_t familyIndex);
-
-VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow* window);
 
 VkSemaphore createSemaphore(VkDevice device);
-
-VkCommandPool createCommandPool(VkDevice device, uint32_t familyIndex);
-
-uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
-
-VkFormat FindSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates,
-  VkImageTiling tiling, VkFormatFeatureFlags features);
-
-VkFormat FindDepthFormat(VkPhysicalDevice physicalDevice);
 
 VkRenderPass createRenderPass(VkDevice device, VkPhysicalDevice physicalDevice,
   VkFormat format, VkSampleCountFlagBits msaaSamples);
@@ -231,8 +247,6 @@ VkDescriptorPool createDescriptorPool(VkDevice device, uint32_t maxDescriptors, 
 VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descriptorPool,
   VkDescriptorSetLayout descriptorSetLayout, Buffer& uniformBuffer, Buffer& param,
   VkImageView textureImageView, VkSampler textureSampler);
-
-std::vector<VkCommandBuffer> createCommandBuffer(VkDevice device, VkCommandPool commandPool, uint32_t imageCount);
 
 void TransitionImageLayout(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue,
   VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
