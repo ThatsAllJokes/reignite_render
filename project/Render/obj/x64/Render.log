@@ -1,0 +1,4 @@
+﻿  render_app.cpp
+d:\dev\hybrid_render_assessment\project\reignite\src\reignite\core.h(11,1): error C1189:  #error:  Reignite only supports Windows.
+d:\dev\hybrid_render_assessment\project\reignite\src\reignite\core.h(11,1): error C1189:   #error Reignite only supports Windows.
+d:\dev\hybrid_render_assessment\project\reignite\src\reignite\core.h(11,1): error C1189: ^

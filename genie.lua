@@ -17,6 +17,8 @@ project "Reignite"
 
   files {
     "extern/glm/glm/**.hpp",
+    "extern/KTX-Software/other_include/**.c",
+    "extern/KTX-Software/other_include/**.cpp",
     "extern/volk/volk.c",
     "extern/stb/stb_image.h",
     "project/Reignite/src/**.h",
@@ -35,6 +37,9 @@ project "Reignite"
     "$(VULKAN_SDK)\\Include",
     "extern/glfw/include",
     "extern/glm/glm",
+    "extern/KTX-Software/include",
+    "extern/KTX-Software/lib",
+    "extern/KTX-Software/other_include",
     "extern/spdlog/include",
     "extern/stb",
     "extern/tinygltf",
@@ -44,7 +49,8 @@ project "Reignite"
 
   links {
     "GLFW",
-    "C:\\VulkanSDK\\1.1.108.0\\Lib\\vulkan-1"
+    "C:\\VulkanSDK\\1.1.108.0\\Lib\\vulkan-1",
+    "extern/KTX-Software/build/msvs/x64/vs2017/Debug/libktx.gl",
   }
 
   configuration "Debug"

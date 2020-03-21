@@ -1,6 +1,8 @@
 #ifndef _RI_VULKAN_INITIALIZERS_
 #define _RI_VULKAN_INITIALIZERS_ 1
 
+#include <vector>
+
 #include "../basic_types.h"
 #include "vulkan/vulkan.h"
 
@@ -53,6 +55,31 @@ namespace initializers {
     return beginInfo;
   }
 
+  inline VkImageMemoryBarrier ImageMemoryBarrier() {
+
+    VkImageMemoryBarrier imageMemoryBarrier = {};
+    imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    return imageMemoryBarrier;
+  }
+
+  inline VkBufferMemoryBarrier BufferMemoryBarrier() {
+
+    VkBufferMemoryBarrier bufferMemoryBarrier = {};
+    bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    return bufferMemoryBarrier;
+  }
+
+  inline VkMemoryBarrier MemoryBarrier() {
+
+    VkMemoryBarrier memoryBarrier = {};
+    memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    return memoryBarrier;
+  }
+
   inline VkSamplerCreateInfo SamplerCreateInfo() {
 
     VkSamplerCreateInfo createInfo = {};
@@ -75,11 +102,46 @@ namespace initializers {
     return createInfo;
   }
 
+  inline VkSemaphoreCreateInfo SemaphoreCreateInfo() {
+
+    VkSemaphoreCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    return createInfo;
+  }
+
+  inline VkFenceCreateInfo FenceCreateInfo(VkFenceCreateFlags flags = 0) {
+
+    VkFenceCreateInfo fenceCreateInfo = {};
+    fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceCreateInfo.flags = flags;
+    return fenceCreateInfo;
+  }
+
   inline VkSubmitInfo SubmitInfo() {
 
     VkSubmitInfo submitInfo = {};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     return submitInfo;
+  }
+
+  inline VkViewport Viewport(float width, float height, float minDepth, float maxDepth) {
+
+    VkViewport viewport = {};
+    viewport.width = width;
+    viewport.height = height;
+    viewport.minDepth = minDepth;
+    viewport.maxDepth = maxDepth;
+    return viewport;
+  }
+
+  inline VkRect2D Rect2D(s32 width, s32 height, s32 offsetX, s32 offsetY) {
+
+    VkRect2D rect = {};
+    rect.extent.width = width;
+    rect.extent.height = height;
+    rect.offset.x = offsetX;
+    rect.offset.y = offsetY;
+    return rect;
   }
 
   inline VkBufferCreateInfo BufferCreateInfo() {
@@ -226,8 +288,60 @@ namespace initializers {
     return writeDescriptorSet;
   }
 
-  
+  inline VkVertexInputBindingDescription VertexInputBindingDescription(
+    u32 binding, u32 stride, VkVertexInputRate inputRate) {
 
+    VkVertexInputBindingDescription vertexInputBindDescription = {};
+    vertexInputBindDescription.binding = binding;
+    vertexInputBindDescription.stride = stride;
+    vertexInputBindDescription.inputRate = inputRate;
+    return vertexInputBindDescription;
+  }
+
+  inline VkVertexInputAttributeDescription VertexInputAttributeDescription(
+    u32 binding, u32 location, VkFormat format, u32 offset) {
+
+    VkVertexInputAttributeDescription vertexInputAttribDescription = {};
+    vertexInputAttribDescription.location = location;
+    vertexInputAttribDescription.binding = binding;
+    vertexInputAttribDescription.format = format;
+    vertexInputAttribDescription.offset = offset;
+    return vertexInputAttribDescription;
+  }
+
+  inline VkPipelineVertexInputStateCreateInfo PipelineVertexInputStateCreateInfo() {
+
+    VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo = {};
+    pipelineVertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    return pipelineVertexInputStateCreateInfo;
+  }
+
+  inline VkPipelineInputAssemblyStateCreateInfo PipelineInputAssemblyStateCreateInfo(
+    VkPrimitiveTopology topology, VkPipelineInputAssemblyStateCreateFlags flags,
+    VkBool32 primitiveRestartEnable) {
+
+    VkPipelineInputAssemblyStateCreateInfo pipelineInputAssemblyStateCreateInfo = {};
+    pipelineInputAssemblyStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    pipelineInputAssemblyStateCreateInfo.topology = topology;
+    pipelineInputAssemblyStateCreateInfo.flags = flags;
+    pipelineInputAssemblyStateCreateInfo.primitiveRestartEnable = primitiveRestartEnable;
+    return pipelineInputAssemblyStateCreateInfo;
+  }
+
+  inline VkPipelineRasterizationStateCreateInfo PipelineRasterizationStateCreateInfo(
+    VkPolygonMode polygonMode, VkCullModeFlags cullMode, VkFrontFace frontFace,
+    VkPipelineRasterizationStateCreateFlags flags = 0) {
+
+    VkPipelineRasterizationStateCreateInfo pipelineRasterizationStateCreateInfo = {};
+    pipelineRasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    pipelineRasterizationStateCreateInfo.polygonMode = polygonMode;
+    pipelineRasterizationStateCreateInfo.cullMode = cullMode;
+    pipelineRasterizationStateCreateInfo.frontFace = frontFace;
+    pipelineRasterizationStateCreateInfo.flags = flags;
+    pipelineRasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
+    pipelineRasterizationStateCreateInfo.lineWidth = 1.0f;
+    return pipelineRasterizationStateCreateInfo;
+  }
 
   inline VkPipelineColorBlendAttachmentState PipelineColorBlendAttachmentState(
     VkColorComponentFlags colorWriteMask, VkBool32 blendEnable) {
