@@ -235,7 +235,7 @@ class VulkanSwapchain {
     VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain, &imageCount, nullptr));
 
     images.resize(imageCount);
-    VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain, &imageCount, nullptr));
+    VK_CHECK(vkGetSwapchainImagesKHR(device, swapchain, &imageCount, images.data()));
 
     buffers.resize(imageCount);
     for (u32 i = 0; i < imageCount; ++i) {

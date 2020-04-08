@@ -18,6 +18,13 @@ namespace initializers {
     return allocateInfo;
   }
 
+  inline VkMappedMemoryRange MappedMemoryRange() {
+
+    VkMappedMemoryRange memoryRange = {};
+    memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+    return memoryRange;
+  }
+
   inline VkCommandBufferAllocateInfo CommandBufferAllocateInfo(
     VkCommandPool commandPool, VkCommandBufferLevel level, u32 bufferCount) {
 

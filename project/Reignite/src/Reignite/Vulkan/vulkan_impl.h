@@ -19,23 +19,21 @@
 #include <gtc/matrix_transform.hpp>
 
 #include <volk.h>
-#include "vulkan_initializers.h"
 
+#include "vulkan_initializers.h"
+#include "vulkan_swapchain.h"
+#include "vulkan_texture.h"
 
 #include "../basic_types.h"
 #include "../log.h"
 
-#define VK_CHECK(call) \
-  do { \
-    VkResult result_ = call; \
-    assert(result_ == VK_SUCCESS); \
-  }while(0)
 
-#ifndef ARRAYSIZE
-#define ARRAYSIZE(array) (sizeof(array) / sizeof((array)[0]))
-#endif // ARRAYSIZE
-
-//#define EXE_ROUTE 1
+struct FrameBufferAttachment {
+  VkImage image;
+  VkDeviceMemory mem;
+  VkImageView view;
+  VkFormat format;
+};
 
 // VERTEX DEFINITION //////////////////////////////////////////////////////////////////////
 
@@ -43,35 +41,30 @@ struct Vertex {
   float position[3];
   float normal[3];
   float texcoord[2];
+  float color[3];
+  float tangent[3];
+  //float bitangent[3];
 
-  //Vertex(glm::vec3 pos, glm::vec3 norm, glm::vec2 texc) : position(pos), normal(norm), texcoord(texc) {}
+  static std::vector<VkVertexInputBindingDescription> getBindingDescription() {
 
-  static VkVertexInputBindingDescription getBindingDescription() {
-
-    VkVertexInputBindingDescription bindingDescription = {};
-    bindingDescription.binding = 0;                             // binding number (id?)
-    bindingDescription.stride = sizeof(Vertex);                 // distance between two elements (bytes)
-    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX; // next data entries could be moved between vertex or instance
+    std::vector<VkVertexInputBindingDescription> bindingDescription = {
+    
+      vk::initializers::VertexInputBindingDescription(0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX)
+    };
 
     return bindingDescription;
   }
 
-  static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescription() {
-    std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = {};
-    attributeDescriptions[0].binding = 0; // where this attribute gets its data
-    attributeDescriptions[0].location = 0; // where this attribute is binded
-    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT; // attribute data (size & type)
-    attributeDescriptions[0].offset = offsetof(Vertex, position); // number of bytes since start of per-vertex data
+  static std::vector<VkVertexInputAttributeDescription> getAttributeDescription() {
 
-    attributeDescriptions[1].binding = 0;
-    attributeDescriptions[1].location = 1;
-    attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[1].offset = offsetof(Vertex, normal);
-
-    attributeDescriptions[2].binding = 0;
-    attributeDescriptions[2].location = 2;
-    attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[2].offset = offsetof(Vertex, texcoord);
+    std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {
+    
+      vk::initializers::VertexInputAttributeDescription(0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0),
+      vk::initializers::VertexInputAttributeDescription(0, 1, VK_FORMAT_R32G32B32_SFLOAT, sizeof(float) * 3),
+      vk::initializers::VertexInputAttributeDescription(0, 2, VK_FORMAT_R32G32_SFLOAT, sizeof(float) * 6),
+      vk::initializers::VertexInputAttributeDescription(0, 3, VK_FORMAT_R32G32B32_SFLOAT, sizeof(float) * 8),
+      vk::initializers::VertexInputAttributeDescription(0, 4, VK_FORMAT_R32G32B32_SFLOAT, sizeof(float) * 11)
+    };
 
     return attributeDescriptions;
   }
@@ -115,10 +108,16 @@ struct Buffer {
   VkDevice device;
   VkBuffer buffer;
   VkDeviceMemory bufferMemory;
+  VkDescriptorBufferInfo descriptor;
+  VkDeviceSize size = 0;
+  VkDeviceSize alignment = 0;
   void* mapped = nullptr;
+
+  VkBufferUsageFlags usageFlags;
+  VkMemoryPropertyFlags memoryPropertyFlags;
 };
 
-void createBuffer(VkDevice device, VkPhysicalDevice physicalDevice, Buffer& buffer,
+void createBuffer(VkDevice device, VkPhysicalDevice physicalDevice, Buffer* buffer,
   VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
 
 void destroyBuffer(VkDevice device, const Buffer& buffer);
@@ -222,6 +221,16 @@ VkImageView createImageView(VkDevice device, VkImage image, VkFormat format,
 
 VkShaderModule loadShader(VkDevice device, const char* path);
 
+inline VkPipelineCache CreatePipelineCache(VkDevice device) {
+
+  VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
+  pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+
+  VkPipelineCache pipelineCache;
+  VK_CHECK(vkCreatePipelineCache(device, &pipelineCacheCreateInfo, nullptr, &pipelineCache));
+  return pipelineCache;
+}
+
 VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout);
 
 VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device);
@@ -248,8 +257,8 @@ VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descripto
   VkDescriptorSetLayout descriptorSetLayout, Buffer& uniformBuffer, Buffer& param,
   VkImageView textureImageView, VkSampler textureSampler);
 
-void TransitionImageLayout(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue,
-  VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
+void TransitionImageLayout(VkCommandBuffer cmd, VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue,
+  VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
 
 void generateMipmaps(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool,
   VkQueue graphicsQueue, VkImage image, VkFormat format, int32_t texWidth, int32_t texHeight,
@@ -269,6 +278,27 @@ void CreateDepthResources(VkDevice device, VkPhysicalDevice physicalDevice,
 
 void CreateColorResources(VkDevice device, VkPhysicalDevice physicalDevice, const Swapchain& swapchain,
   Image& colorImage, VkFormat swapchainImageFormat, VkSampleCountFlagBits msaaSamples);
+
+
+// Deferred Tool functions ///////////////////////////////////////////////////////////////////////////////
+
+void CreateFramebufferAttachment(VkDevice device, VkPhysicalDevice physicalDevice, 
+  VkFormat format, VkImageUsageFlagBits usage, FrameBufferAttachment* attachment,
+  s32 offScreenWidth, s32 offScreenHeight);
+
+inline VkPipelineShaderStageCreateInfo loadShader(VkDevice device,
+  std::string filename, VkShaderStageFlagBits stage) {
+
+  VkPipelineShaderStageCreateInfo shaderStage = {};
+  shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  shaderStage.stage = stage;
+  shaderStage.module = vk::tools::loadShader(device, filename.c_str());
+  shaderStage.pName = "main";
+
+  assert(shaderStage.module != VK_NULL_HANDLE);
+
+  return shaderStage;
+}
 
 #endif // _VULKAN_IMPL_
 

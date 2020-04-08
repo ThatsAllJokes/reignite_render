@@ -68,8 +68,6 @@ namespace Reignite {
     component_system = std::unique_ptr<ComponentSystem>(new ComponentSystem(state));
     render_context = std::unique_ptr<RenderContext>(new RenderContext(state));
 
-    render_context->submitDisplayList();
-
     is_running = true;
   }
 

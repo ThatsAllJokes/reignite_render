@@ -33,6 +33,8 @@ namespace tools {
     VkPipelineStageFlags srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
     VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 
+  VkShaderModule loadShader(VkDevice device, const char* filename);
+
 }} // end of vk::tools namespace
 
 #endif // _RI_VULKAN_TOOLS_

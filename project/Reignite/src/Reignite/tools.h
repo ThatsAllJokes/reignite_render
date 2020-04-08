@@ -11,6 +11,12 @@
 namespace Reignite {
 namespace Tools {
 
+  const std::string GetAssetPath();
+
+  bool LoadTextureFile(std::string filename, s32& width, s32& height, void** data);
+
+  void FreeTextureData(void* textureData);
+
   bool LoadGltfFile(std::string filename, GeometryResource& geometry);
 
   bool LoadObjFile(std::string filename, GeometryResource& geometry);

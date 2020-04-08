@@ -102,3 +102,30 @@ void vk::tools::SetImageLayout(VkCommandBuffer cmdbuffer, VkImage image,
   subresourceRange.layerCount = 1;
   SetImageLayout(cmdbuffer, image, oldImageLayout, newImageLayout, subresourceRange, srcStageMask, dstStageMask);
 }
+
+VkShaderModule vk::tools::loadShader(VkDevice device, const char* filename) {
+
+  FILE* file = fopen(filename, "rb");
+  assert(file);
+
+  fseek(file, 0, SEEK_END);
+  size_t length = ftell(file);
+  assert(length >= 0);
+  fseek(file, 0, SEEK_SET);
+
+  char* buffer = new char[length];
+  assert(buffer);
+
+  size_t rc = fread(buffer, 1, length, file);
+  assert(rc == size_t(length));
+  fclose(file);
+
+  VkShaderModuleCreateInfo createInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+  createInfo.codeSize = length;
+  createInfo.pCode = reinterpret_cast<const uint32_t*>(buffer);
+
+  VkShaderModule shaderModule = 0;
+  VK_CHECK(vkCreateShaderModule(device, &createInfo, 0, &shaderModule));
+
+  return shaderModule;
+}

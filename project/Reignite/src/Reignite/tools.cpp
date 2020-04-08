@@ -10,6 +10,36 @@
 
 #include "log.h"
 
+
+#define EXE_PATH 0
+
+const std::string Reignite::Tools::GetAssetPath() {
+#if EXE_PATH
+  return "./../../../../project/";
+#else
+  return "./../";
+#endif
+}
+
+bool Reignite::Tools::LoadTextureFile(std::string filename, s32& width, s32& height, void** data) {
+
+  s32 texChannels;
+  *data = stbi_load(filename.c_str(), &width, &height, &texChannels, STBI_rgb_alpha);
+  assert(*data);
+
+  return true;
+}
+
+void Reignite::Tools::FreeTextureData(void* textureData) {
+
+  if (nullptr == textureData) {
+    RI_ERROR("Pointer does not hold any texture information");
+    return;
+  }
+
+  stbi_image_free(textureData);
+}
+
 bool Reignite::Tools::LoadGltfFile(std::string filename, GeometryResource& geometry) {
 
   bool store_original_json_for_extras_and_extensions = false;
