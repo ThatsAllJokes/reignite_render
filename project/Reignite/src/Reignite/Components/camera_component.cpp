@@ -14,7 +14,7 @@ Reignite::CameraComponent::CameraComponent() {
   fov = 70.0f;
   aspect = 16.0f / 9.0f;
   near_z = 0.1f;
-  far_z = 100.0f;
+  far_z = 256.0f;
 }
 
 void Reignite::UpdateCameraComponent(CameraComponent& cc) {

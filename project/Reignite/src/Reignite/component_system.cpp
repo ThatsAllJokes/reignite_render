@@ -57,11 +57,11 @@ namespace Reignite {
 
   void Reignite::ComponentSystem::update() {
 
+    UpdateCameraComponent(state->camera);
+
     u32 size = 1;
     for (u32 i = 0; i < size; ++i)
       UpdateTransformComponent(state->transform_components[i]);
-
-    UpdateCameraComponent(state->camera);
 
     for (u32 i = 0; i < size; ++i)
       UpdateRenderComponent(state->render_components[i]);
@@ -88,6 +88,8 @@ namespace Reignite {
     LightComponent lc;
     lc.is_active = false;
     state->light_components.push_back(lc);
+
+    update();
   }
 
   void Reignite::ComponentSystem::shutdown() {}

@@ -41,13 +41,18 @@ namespace Reignite {
 
     void setRenderInfo();
 
-    void submitDisplayList();
+    void buildDeferredCommands();
+    void buildCommands();
+
     void draw();
 
    private:
 
-    void updateUniformBuffers();
+    void updateUniformBuffersScreen();
+    void updateUniformBufferDeferredMatrices();
+    void updateUniformBufferDeferredLights();
 
+    void loadResources();
     void initialize(const std::shared_ptr<State> state, const RenderContextParams& params = RenderContextParams());
     void shutdown();
 

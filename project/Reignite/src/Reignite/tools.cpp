@@ -118,5 +118,41 @@ bool Reignite::Tools::LoadObjFile(std::string filename, GeometryResource& geomet
     }
   }
 
+  std::vector<vec3f> tangents;
+  //std::vector<vec3f> bitangents;
+
+  for (u32 i = 0; i < geometry.vertices.size(); i += 3) {
+
+    vec3f v0(geometry.vertices[i + 0].position[0], geometry.vertices[i + 0].position[1], geometry.vertices[i + 0].position[2]);
+    vec3f v1(geometry.vertices[i + 1].position[0], geometry.vertices[i + 1].position[1], geometry.vertices[i + 1].position[2]);
+    vec3f v2(geometry.vertices[i + 2].position[0], geometry.vertices[i + 2].position[1], geometry.vertices[i + 2].position[2]);
+  
+    vec2f uv0(geometry.vertices[i + 0].texcoord[0], geometry.vertices[i + 0].texcoord[1]);
+    vec2f uv1(geometry.vertices[i + 1].texcoord[0], geometry.vertices[i + 1].texcoord[1]);
+    vec2f uv2(geometry.vertices[i + 2].texcoord[0], geometry.vertices[i + 2].texcoord[1]);
+
+    vec3f deltaPos1 = v1 - v0;
+    vec3f deltaPos2 = v2 - v0;
+
+    vec2f deltaUV1 = uv1 - uv0;
+    vec2f deltaUV2 = uv2 - uv0;
+
+    float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
+    vec3f tangent = (deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y) * r;
+    //vec3f bitangent = (deltaPos2 * deltaUV1.x - deltaPos1 * deltaUV2.x) * r;
+
+    geometry.vertices[i + 0].tangent[0] = tangent.x;
+    geometry.vertices[i + 0].tangent[1] = tangent.y;
+    geometry.vertices[i + 0].tangent[2] = tangent.z;
+
+    geometry.vertices[i + 1].tangent[0] = tangent.x;
+    geometry.vertices[i + 1].tangent[1] = tangent.y;
+    geometry.vertices[i + 1].tangent[2] = tangent.z;
+
+    geometry.vertices[i + 2].tangent[0] = tangent.x;
+    geometry.vertices[i + 2].tangent[1] = tangent.y;
+    geometry.vertices[i + 2].tangent[2] = tangent.z;
+  }
+
   return true;
 }
