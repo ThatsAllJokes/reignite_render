@@ -203,8 +203,8 @@ bool supportsPresentation(VkPhysicalDevice physicalDevice, uint32_t familyIndex)
 
 VkSampleCountFlagBits getMaxUsableSampleCount(VkPhysicalDevice physicalDevice);
 
-VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t physicalDeviceCount,
-  VkSampleCountFlagBits& msaaSamples);
+VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, std::string* physicalDeviceNames,
+  uint32_t physicalDeviceCount, VkSampleCountFlagBits& msaaSamples);
 
 
 VkSemaphore createSemaphore(VkDevice device);

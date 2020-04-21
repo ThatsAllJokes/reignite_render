@@ -4,6 +4,7 @@
 
 #include "tools.h"
 
+#include "Vulkan/vulkan_overlay.h"
 #include "Vulkan/vulkan_impl.h"
 #include "Vulkan/vulkan_texture.h"
 #include "Vulkan/vulkan_state.h"
@@ -26,7 +27,16 @@ namespace Reignite {
     u16 width;
     u16 height;
 
+    float frameTimer;
+
     GLFWwindow* window;
+    vec2f mousePos;
+
+    struct {
+      bool left = false;
+      bool right = false;
+      bool middle = false;
+    } mouseButtons;
 
     struct Entity {
       std::vector<s32> entity;
@@ -58,16 +68,13 @@ namespace Reignite {
 
     std::vector<mat4f> model_list;
 
-    u32 frameCounter;
-    u32 lastFPS;
-    std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp;
-
     // Vulkan base
     VkInstance instance;
 
     VkDebugReportCallbackEXT debugCallback;
 
     VkPhysicalDevice physicalDevices[16];
+    std::string physicalDeviceNames[16];
     u32 physicalDeviceCount;
 
     VkPhysicalDevice physicalDevice;
@@ -203,6 +210,8 @@ namespace Reignite {
     vk::Buffer tmp_vertices;
     vk::Buffer tmp_indices;
     u32 tmp_indexCount;
+
+    vk::Overlay overlay;
   };
 
   Reignite::RenderContext::RenderContext(const std::shared_ptr<State> s) {
@@ -328,7 +337,7 @@ namespace Reignite {
     vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.floor, 0, NULL);
     vkCmdBindVertexBuffers(data->offScreenCmdBuffer, 0, 1, &data->geometries[0].vertexBuffer.buffer, offsets);
     vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[0].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(data->offScreenCmdBuffer, data->geometries[0].indices.size(), 1, 0, 0, 0);
+    vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[0].indices.size(), 1, 0, 0, 0);
 
     // Object
     //vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.model, 0, NULL);
@@ -341,12 +350,12 @@ namespace Reignite {
     VK_CHECK(vkEndCommandBuffer(data->offScreenCmdBuffer));
   }
 
-  void Reignite::RenderContext::buildCommands() {
+  void Reignite::RenderContext::buildCommandBuffers() {
 
     VkCommandBufferBeginInfo cmdBufferInfo = vk::initializers::CommandBufferBeginInfo();
 
     VkClearValue clearValues[2];
-    clearValues[0].color = { { 0.0f, 0.0f, 0.2f, 0.0f } };
+    clearValues[0].color = { { 0.2f, 0.2f, 0.2f, 1.0f } };
     clearValues[1].depthStencil = { 1.0f, 0 };
 
     VkRenderPassBeginInfo renderPassBeginInfo = vk::initializers::RenderPassBeginInfo();
@@ -395,6 +404,15 @@ namespace Reignite {
       vkCmdDrawIndexed(data->commandBuffers[i], 6, 1, 0, 0, 1);
 
       //TODO: Draw UI call should be here
+      {
+        const VkViewport viewport = vk::initializers::Viewport((float)state->width, (float)state->height, 0.0f, 1.0f);
+        const VkRect2D scissor = vk::initializers::Rect2D(state->width, state->height, 0, 0);
+        vkCmdSetViewport(data->commandBuffers[i], 0, 1, &viewport);
+        vkCmdSetScissor(data->commandBuffers[i], 0, 1, &scissor);
+
+        data->overlay.draw(data->commandBuffers[i]);
+      }
+      // UI draw calls
 
       vkCmdEndRenderPass(data->commandBuffers[i]);
 
@@ -404,6 +422,15 @@ namespace Reignite {
   }
 
   void Reignite::RenderContext::draw() {
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.DisplaySize = ImVec2((float)state->width, (float)state->height);
+    io.DeltaTime = state->frameTimer;
+
+    io.MousePos = ImVec2(state->mousePos.x, state->mousePos.y);
+    io.MouseDown[0] = state->mouseButtons.left;
+    io.MouseDown[1] = state->mouseButtons.right;
 
     // prepare frame
     {
@@ -454,6 +481,53 @@ namespace Reignite {
     }
 
     updateUniformBufferDeferredLights();
+
+    // update overlay
+    {
+      ImGuiIO& io = ImGui::GetIO();
+
+      io.DisplaySize = ImVec2((float)state->width, (float)state->height);
+      io.DeltaTime = state->frameTimer;
+
+      io.MousePos = ImVec2(state->mousePos.x, state->mousePos.y);
+      io.MouseDown[0] = state->mouseButtons.left;
+      io.MouseDown[1] = state->mouseButtons.right;
+
+      ImGui::NewFrame();
+
+      ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+      //ImGui::SetNextWindowPos(ImVec2(10, 10));
+      ImGui::Begin("Test UI", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize );
+      ImGui::TextUnformatted(state->title.c_str());
+      ImGui::TextUnformatted(data->physicalDeviceNames[0].c_str());
+      //ImGui::Text("%.2f ms/frame (%.1d fps)", (1000.0f / lastFPS), lastFPS);
+
+      ImGui::PushItemWidth(110.0f * data->overlay.scale);
+    
+      //OnUpdateUIOverlay(&UIOverlay);
+      bool res = ImGui::Checkbox("Show render targets", &data->deferred_debug_display);
+      if (res) { 
+        data->overlay.updated = true;
+        buildCommandBuffers();
+        updateUniformBuffersScreen();
+      }
+
+
+      ImGui::PopItemWidth();
+
+      ImGui::End();
+      ImGui::PopStyleVar();
+
+      ImGui::ShowDemoWindow();
+
+      ImGui::Render();
+
+      if (data->overlay.update() || data->overlay.updated) {
+        buildCommandBuffers();
+        data->overlay.updated = false;
+      }
+    }
+
   }
 
   void RenderContext::updateUniformBuffersScreen() {
@@ -562,7 +636,7 @@ namespace Reignite {
     VK_CHECK(vkEnumeratePhysicalDevices(data->instance, &data->physicalDeviceCount, data->physicalDevices));
 
     VkSampleCountFlagBits filler;
-    data->physicalDevice = pickPhysicalDevice(data->physicalDevices, data->physicalDeviceCount, filler);
+    data->physicalDevice = pickPhysicalDevice(data->physicalDevices, data->physicalDeviceNames, data->physicalDeviceCount, filler);
     vkGetPhysicalDeviceProperties(data->physicalDevice, &data->deviceProperties);
     vkGetPhysicalDeviceFeatures(data->physicalDevice, &data->deviceFeatures);
     vkGetPhysicalDeviceMemoryProperties(data->physicalDevice, &data->deviceMemoryProperties);
@@ -766,6 +840,18 @@ namespace Reignite {
         attachments[0] = data->swapchain.buffers[i].view;
         VK_CHECK(vkCreateFramebuffer(data->device, &framebufferCreateInfo, nullptr, &data->framebuffers[i]));
       }
+    }
+
+    // setup overlay
+    {
+      data->overlay.state = data->vulkanState;
+      data->overlay.queue = data->queue;
+      data->overlay.shaders = {
+        loadShader(data->device, Reignite::Tools::GetAssetPath() + "shaders/ui.vert.spv", VK_SHADER_STAGE_VERTEX_BIT),
+        loadShader(data->device, Reignite::Tools::GetAssetPath() + "shaders/ui.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT),
+      };
+      data->overlay.prepareResources();
+      data->overlay.preparePipeline(data->pipelineCache, data->renderPass);
     }
 
     // Deferred features initialization ->
@@ -1232,7 +1318,7 @@ else
     //createMaterialResource();
     //createMaterialResource();
 
-    buildCommands();
+    buildCommandBuffers();
     buildDeferredCommands();
   }
 

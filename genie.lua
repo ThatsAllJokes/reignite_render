@@ -17,6 +17,7 @@ project "Reignite"
 
   files {
     "extern/glm/glm/**.hpp",
+    "extern/imgui/**.cpp",
     "extern/KTX-Software/other_include/**.c",
     "extern/KTX-Software/other_include/**.cpp",
     "extern/volk/volk.c",
@@ -37,6 +38,7 @@ project "Reignite"
     "$(VULKAN_SDK)\\Include",
     "extern/glfw/include",
     "extern/glm/glm",
+    "extern/imgui",
     "extern/KTX-Software/include",
     "extern/KTX-Software/lib",
     "extern/KTX-Software/other_include",

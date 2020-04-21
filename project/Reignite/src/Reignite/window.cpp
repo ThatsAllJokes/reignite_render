@@ -22,7 +22,16 @@ namespace Reignite {
     u16 width;
     u16 height;
 
+    float frameTimer;
+
     GLFWwindow* window;
+    vec2f mousePos;
+
+    struct {
+      bool left = false;
+      bool right = false;
+      bool middle = false;
+    } mouseButtons;
 
     struct Entity {
       std::vector<s32> entity;
@@ -76,6 +85,7 @@ namespace Reignite {
       s_glfw_initialized = true;
     }
 
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     data->window = glfwCreateWindow((s16)state->width, (s16)state->height, state->title.c_str(), nullptr, nullptr);
     assert(data->window);
@@ -95,6 +105,23 @@ namespace Reignite {
 
     glfwPollEvents();
     //glfwSwapBuffers(window);
+  }
+
+  void Window::updateMouseInput() {
+
+    double mX, mY;
+    glfwGetCursorPos(data->window, &mX, &mY);
+
+    state->mousePos.x = (float)mX;
+    state->mousePos.y = (float)mY;
+
+    int leftButtonState = glfwGetMouseButton(data->window, GLFW_MOUSE_BUTTON_LEFT);
+    int rightButtonState = glfwGetMouseButton(data->window, GLFW_MOUSE_BUTTON_RIGHT);
+    int middleButtonState = glfwGetMouseButton(data->window, GLFW_MOUSE_BUTTON_MIDDLE);
+
+    state->mouseButtons.left = (leftButtonState == GLFW_PRESS);
+    state->mouseButtons.right = (rightButtonState == GLFW_PRESS);
+    state->mouseButtons.middle = (middleButtonState == GLFW_PRESS);
   }
 
   bool Window::closeWindow() {

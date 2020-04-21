@@ -21,6 +21,13 @@ namespace Reignite {
     u16 height;
 
     GLFWwindow* window;
+    vec2f mousePos;
+
+    struct {
+      bool left = false;
+      bool right = false;
+      bool middle = false;
+    } mouseButtons;
 
     struct Entity {
       std::vector<s32> entity;

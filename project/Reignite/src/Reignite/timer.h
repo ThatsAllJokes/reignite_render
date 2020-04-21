@@ -11,12 +11,12 @@ namespace Reignite {
    public:
 
     static void StartTime();
-    static std::chrono::seconds EndTime();
+    static double EndTime();
 
    private:
 
-    static std::chrono::time_point<std::chrono::steady_clock> s_time_start;
-    static std::chrono::time_point<std::chrono::steady_clock> s_time_end;
+    static std::chrono::steady_clock::time_point s_time_start;
+    static std::chrono::steady_clock::time_point s_time_end;
   };
 
 } // end of Reignite namespace

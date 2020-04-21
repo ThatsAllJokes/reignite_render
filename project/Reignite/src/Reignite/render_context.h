@@ -42,7 +42,7 @@ namespace Reignite {
     void setRenderInfo();
 
     void buildDeferredCommands();
-    void buildCommands();
+    void buildCommandBuffers();
 
     void draw();
 

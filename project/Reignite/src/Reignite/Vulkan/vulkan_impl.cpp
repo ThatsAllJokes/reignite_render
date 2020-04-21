@@ -129,8 +129,8 @@ VkSampleCountFlagBits getMaxUsableSampleCount(VkPhysicalDevice physicalDevice) {
   return VK_SAMPLE_COUNT_1_BIT;
 }
 
-VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t physicalDeviceCount,
-  VkSampleCountFlagBits& msaaSamples) {
+VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, std::string* physicalDeviceNames, 
+  uint32_t physicalDeviceCount, VkSampleCountFlagBits& msaaSamples) {
 
   VkPhysicalDevice discrete = 0;
   VkPhysicalDevice fallback = 0;
@@ -139,6 +139,7 @@ VkPhysicalDevice pickPhysicalDevice(VkPhysicalDevice* physicalDevices, uint32_t 
 
     VkPhysicalDeviceProperties props;
     vkGetPhysicalDeviceProperties(physicalDevices[i], &props);
+    physicalDeviceNames[i] = props.deviceName;
 
     RI_INFO("GPU{0}: {1}", i, props.deviceName);
 

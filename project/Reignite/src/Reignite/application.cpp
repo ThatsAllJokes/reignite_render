@@ -1,8 +1,11 @@
 #include "application.h"
 
+#include <chrono>
+
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
+#include "timer.h"
 #include "window.h"
 #include "component_system.h"
 #include "render_context.h"
@@ -21,7 +24,16 @@ namespace Reignite {
     u16 width;
     u16 height;
 
+    float frameTimer;
+
     GLFWwindow* window;
+    vec2f mousePos;
+
+    struct {
+      bool left = false;
+      bool right = false;
+      bool middle = false;
+    } mouseButtons;
 
     struct Entity {
       std::vector<s32> entity;
@@ -51,12 +63,18 @@ namespace Reignite {
 
     while (!window->closeWindow() && is_running) {
 
+      Reignite::Timer::StartTime();
+
       window->update();
+      window->updateMouseInput();
 
       component_system->update();
 
       render_context->setRenderInfo();
       render_context->draw();
+
+      auto timeDiff = Reignite::Timer::EndTime();
+      state->frameTimer = (float)timeDiff / 1000.0f;
     }
   }
 

@@ -18,6 +18,7 @@ namespace Reignite {
     virtual ~Window();
 
     void update();
+    void updateMouseInput();
 
     bool closeWindow();
 
