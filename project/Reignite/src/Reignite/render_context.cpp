@@ -60,7 +60,7 @@ namespace Reignite {
 
     // Render state
     bool render_should_close = false;
-    bool deferred_debug_display = true;
+    bool deferred_debug_display = false;
 
     mat4f view_matrix;
     vec3f camera_position;
@@ -547,6 +547,12 @@ namespace Reignite {
 
   void RenderContext::updateUniformBufferDeferredMatrices() {
 
+    static auto startTime = std::chrono::high_resolution_clock::now();
+
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float timer = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+
     data->uboOffscreenVS.projection = data->projection_matrix;
     data->uboOffscreenVS.view = data->view_matrix;
     data->uboOffscreenVS.model = glm::mat4(1.0f);
@@ -559,7 +565,7 @@ namespace Reignite {
     static auto startTime = std::chrono::high_resolution_clock::now();
 
     auto currentTime = std::chrono::high_resolution_clock::now();
-    float timer = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+    float timer = 0.5f * std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
     // White
     data->uboFragmentLights.lights[0].position = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
