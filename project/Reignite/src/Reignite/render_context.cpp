@@ -137,10 +137,14 @@ namespace Reignite {
       struct {
         vk::Texture2D colorMap;
         vk::Texture2D normalMap;
+        vk::Texture2D roughness;
+        vk::Texture2D metallic;
       } model;
       struct {
         vk::Texture2D colorMap;
         vk::Texture2D normalMap;
+        vk::Texture2D roughness;
+        vk::Texture2D metallic;
       } floor;
     } textures;
 
@@ -199,6 +203,8 @@ namespace Reignite {
       FrameBufferAttachment position;
       FrameBufferAttachment normal;
       FrameBufferAttachment albedo;
+      FrameBufferAttachment roughness;
+      FrameBufferAttachment metallic;
       FrameBufferAttachment depth;
       VkRenderPass renderPass;
     } offScreenFrameBuf;
@@ -302,11 +308,13 @@ namespace Reignite {
   
     VkCommandBufferBeginInfo cmdBufferInfo = vk::initializers::CommandBufferBeginInfo();
 
-    std::array<VkClearValue, 4> clearValues;
+    std::array<VkClearValue, 6> clearValues;
     clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
     clearValues[1].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
     clearValues[2].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
-    clearValues[3].depthStencil = { 1.0f, 0 };
+    clearValues[3].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+    clearValues[4].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+    clearValues[5].depthStencil = { 1.0f, 0 };
 
     VkRenderPassBeginInfo renderPassBeginInfo = vk::initializers::RenderPassBeginInfo();
     renderPassBeginInfo.renderPass = data->offScreenFrameBuf.renderPass;
@@ -565,38 +573,38 @@ namespace Reignite {
     static auto startTime = std::chrono::high_resolution_clock::now();
 
     auto currentTime = std::chrono::high_resolution_clock::now();
-    float timer = 0.5f * std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+    float timer = 0.1f * std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
     // White
-    data->uboFragmentLights.lights[0].position = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
-    data->uboFragmentLights.lights[0].color = glm::vec3(1.5f);
-    data->uboFragmentLights.lights[0].radius = 15.0f * 0.25f;
+    data->uboFragmentLights.lights[0].position = glm::vec4(0.0f, 4.0f, 0.0f, 0.0f);
+    data->uboFragmentLights.lights[0].color = glm::vec3(1.0f);
+    data->uboFragmentLights.lights[0].radius = 35.0f;
     // Red
-    data->uboFragmentLights.lights[1].position = glm::vec4(-2.0f, 0.0f, 0.0f, 0.0f);
-    data->uboFragmentLights.lights[1].color = glm::vec3(1.0f, 0.0f, 0.0f);
-    data->uboFragmentLights.lights[1].radius = 15.0f;
+    data->uboFragmentLights.lights[1].position = glm::vec4(6.0f, 0.0f, 0.0f, 0.0f);
+    data->uboFragmentLights.lights[1].color = glm::vec3(1.0f, 0.0f, 0.0f); //glm::vec3(1.0f, 0.0f, 0.0f);
+    data->uboFragmentLights.lights[1].radius = 35.0f;
     // Blue
     data->uboFragmentLights.lights[2].position = glm::vec4(2.0f, 1.0f, 0.0f, 0.0f);
-    data->uboFragmentLights.lights[2].color = glm::vec3(0.0f, 0.0f, 2.5f);
+    data->uboFragmentLights.lights[2].color = glm::vec3(1.5f); //glm::vec3(0.0f, 0.0f, 2.5f);
     data->uboFragmentLights.lights[2].radius = 5.0f;
     // Yellow
     data->uboFragmentLights.lights[3].position = glm::vec4(0.0f, 0.9f, 0.5f, 0.0f);
-    data->uboFragmentLights.lights[3].color = glm::vec3(1.0f, 1.0f, 0.0f);
+    data->uboFragmentLights.lights[3].color = glm::vec3(1.5f); //glm::vec3(1.0f, 1.0f, 0.0f);
     data->uboFragmentLights.lights[3].radius = 2.0f;
     // Green
     data->uboFragmentLights.lights[4].position = glm::vec4(0.0f, 0.5f, 0.0f, 0.0f);
-    data->uboFragmentLights.lights[4].color = glm::vec3(0.0f, 1.0f, 0.2f);
+    data->uboFragmentLights.lights[4].color = glm::vec3(1.5f); //glm::vec3(0.0f, 1.0f, 0.2f);
     data->uboFragmentLights.lights[4].radius = 5.0f;
     // Yellow
     data->uboFragmentLights.lights[5].position = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
-    data->uboFragmentLights.lights[5].color = glm::vec3(1.0f, 0.7f, 0.3f);
+    data->uboFragmentLights.lights[5].color = glm::vec3(1.5f); //glm::vec3(1.0f, 0.7f, 0.3f);
     data->uboFragmentLights.lights[5].radius = 25.0f;
 
     data->uboFragmentLights.lights[0].position.x = sin(glm::radians(360.0f * timer)) * 5.0f;
     data->uboFragmentLights.lights[0].position.z = cos(glm::radians(360.0f * timer)) * 5.0f;
 
-    data->uboFragmentLights.lights[1].position.x = -4.0f + sin(glm::radians(360.0f * timer) + 45.0f) * 2.0f;
-    data->uboFragmentLights.lights[1].position.z = 0.0f + cos(glm::radians(360.0f * timer) + 45.0f) * 2.0f;
+    data->uboFragmentLights.lights[1].position.x = 4.0f + sin(glm::radians(360.0f * timer) + 45.0f) * 2.0f;
+    //data->uboFragmentLights.lights[1].position.z = 0.0f + cos(glm::radians(360.0f * timer) + 45.0f) * 2.0f;
 
     data->uboFragmentLights.lights[2].position.x = 4.0f + sin(glm::radians(360.0f * timer)) * 2.0f;
     data->uboFragmentLights.lights[2].position.z = 0.0f + cos(glm::radians(360.0f * timer)) * 2.0f;
@@ -615,11 +623,29 @@ namespace Reignite {
   }
 
   void RenderContext::loadResources() {
-
+    /*
     data->textures.model.colorMap.loadFromFile(Reignite::Tools::GetAssetPath() + "textures/stonefloor01_color_bc3_unorm.ktx", VK_FORMAT_BC3_UNORM_BLOCK, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.model.normalMap.loadFromFile(Reignite::Tools::GetAssetPath() + "textures/stonefloor01_normal_bc3_unorm.ktx", VK_FORMAT_BC3_UNORM_BLOCK, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.floor.colorMap.loadFromFile(Reignite::Tools::GetAssetPath() + "textures/stonefloor01_color_bc3_unorm.ktx", VK_FORMAT_BC3_UNORM_BLOCK, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.floor.normalMap.loadFromFile(Reignite::Tools::GetAssetPath() + "textures/stonefloor01_normal_bc3_unorm.ktx", VK_FORMAT_BC3_UNORM_BLOCK, data->device, data->physicalDevice, data->commandPool, data->queue);
+    */
+
+    data->textures.model.colorMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_albedo.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->textures.model.normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->textures.model.roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->textures.model.metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+
+    data->textures.floor.colorMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_albedo.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->textures.floor.normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->textures.floor.roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->textures.floor.metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    
+    /*
+    data->textures.floor.colorMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_albedo.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->textures.floor.normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->textures.floor.roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->textures.floor.metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    */
   }
 
   void Reignite::RenderContext::initialize(const std::shared_ptr<State> s, const RenderContextParams& params) {
@@ -942,6 +968,14 @@ namespace Reignite {
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &data->offScreenFrameBuf.albedo, 
         data->offScreenFrameBuf.width, data->offScreenFrameBuf.height);
 
+      CreateFramebufferAttachment(data->device, data->physicalDevice, VK_FORMAT_R8G8B8A8_UNORM,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &data->offScreenFrameBuf.roughness,
+        data->offScreenFrameBuf.width, data->offScreenFrameBuf.height);
+
+      CreateFramebufferAttachment(data->device, data->physicalDevice, VK_FORMAT_R8G8B8A8_UNORM,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &data->offScreenFrameBuf.metallic,
+        data->offScreenFrameBuf.width, data->offScreenFrameBuf.height);
+
       VkFormat attDepthFormat;
       VkBool32 validDepthFormat = vk::tools::GetSupportedDepthFormat(data->physicalDevice, &attDepthFormat);
       assert(validDepthFormat);
@@ -950,39 +984,43 @@ namespace Reignite {
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, &data->offScreenFrameBuf.depth,
         data->offScreenFrameBuf.width, data->offScreenFrameBuf.height);
 
-      std::array<VkAttachmentDescription, 4> attachmentDescs = {};
+      std::array<VkAttachmentDescription, 6> attachmentDescs = {};
 
-      for (u32 i = 0; i < 4; ++i) {
+      for (u32 i = 0; i < 6; ++i) {
 
-attachmentDescs[i].samples = VK_SAMPLE_COUNT_1_BIT;
-attachmentDescs[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-attachmentDescs[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-attachmentDescs[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-attachmentDescs[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-if (i == 3)
-{
-  attachmentDescs[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  attachmentDescs[i].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-}
-else
-{
-  attachmentDescs[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  attachmentDescs[i].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-}
+        attachmentDescs[i].samples = VK_SAMPLE_COUNT_1_BIT;
+        attachmentDescs[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        attachmentDescs[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        attachmentDescs[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        attachmentDescs[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        if (i == 5)
+        {
+          attachmentDescs[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+          attachmentDescs[i].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        }
+        else
+        {
+          attachmentDescs[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+          attachmentDescs[i].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
       }
 
       attachmentDescs[0].format = data->offScreenFrameBuf.position.format;
       attachmentDescs[1].format = data->offScreenFrameBuf.normal.format;
       attachmentDescs[2].format = data->offScreenFrameBuf.albedo.format;
-      attachmentDescs[3].format = data->offScreenFrameBuf.depth.format;
+      attachmentDescs[3].format = data->offScreenFrameBuf.roughness.format;
+      attachmentDescs[4].format = data->offScreenFrameBuf.metallic.format;
+      attachmentDescs[5].format = data->offScreenFrameBuf.depth.format;
 
       std::vector<VkAttachmentReference> colorReferences;
       colorReferences.push_back({ 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
       colorReferences.push_back({ 1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
       colorReferences.push_back({ 2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+      colorReferences.push_back({ 3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+      colorReferences.push_back({ 4, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
 
       VkAttachmentReference defDepthReference = {};
-      defDepthReference.attachment = 3;
+      defDepthReference.attachment = 5;
       defDepthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
       VkSubpassDescription subpass = {};
@@ -1020,11 +1058,13 @@ else
 
       VK_CHECK(vkCreateRenderPass(data->device, &defRenderPassInfo, nullptr, &data->offScreenFrameBuf.renderPass));
 
-      std::array<VkImageView, 4> attachments;
+      std::array<VkImageView, 6> attachments;
       attachments[0] = data->offScreenFrameBuf.position.view;
       attachments[1] = data->offScreenFrameBuf.normal.view;
       attachments[2] = data->offScreenFrameBuf.albedo.view;
-      attachments[3] = data->offScreenFrameBuf.depth.view;
+      attachments[3] = data->offScreenFrameBuf.roughness.view;
+      attachments[4] = data->offScreenFrameBuf.metallic.view;
+      attachments[5] = data->offScreenFrameBuf.depth.view;
 
       VkFramebufferCreateInfo fbufCreateInfo = {};
       fbufCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1105,11 +1145,21 @@ else
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           VK_SHADER_STAGE_FRAGMENT_BIT,
           3),
-        // Binding 4 : Fragment shader uniform buffer
+        // Binding 4 : Roughness texture
+        vk::initializers::DescriptorSetLayoutBinding(
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          VK_SHADER_STAGE_FRAGMENT_BIT,
+          4),
+        // Binding 5 : Metalllic texture
+        vk::initializers::DescriptorSetLayoutBinding(
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          VK_SHADER_STAGE_FRAGMENT_BIT,
+          5),
+        // Binding 6 : Fragment shader uniform buffer
         vk::initializers::DescriptorSetLayoutBinding(
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           VK_SHADER_STAGE_FRAGMENT_BIT,
-          4),
+          6),
       };
 
       VkDescriptorSetLayoutCreateInfo descriptorLayout =
@@ -1209,7 +1259,9 @@ else
       graphicsPipelineCreateInfo.renderPass = data->offScreenFrameBuf.renderPass;
       graphicsPipelineCreateInfo.layout = data->pipelineLayouts.offscreen;
 
-      std::array<VkPipelineColorBlendAttachmentState, 3> blendAttachmentStates = {
+      std::array<VkPipelineColorBlendAttachmentState, 5> blendAttachmentStates = {
+        vk::initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
+        vk::initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
         vk::initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
         vk::initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
         vk::initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE)
@@ -1231,7 +1283,7 @@ else
       VkDescriptorPoolCreateInfo poolInfo =
         vk::initializers::DescriptorPoolCreateInfo(
           static_cast<u32>(poolSizes.size()),
-          poolSizes.data(), 3);
+          poolSizes.data(), 5);
 
       VK_CHECK(vkCreateDescriptorPool(data->device, &poolInfo, nullptr, &data->descriptorPool));
     }
@@ -1258,6 +1310,14 @@ else
         vk::initializers::DescriptorImageInfo(data->colorSampler,
           data->offScreenFrameBuf.albedo.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
+      VkDescriptorImageInfo texDescriptorRoughness =
+        vk::initializers::DescriptorImageInfo(data->colorSampler,
+          data->offScreenFrameBuf.roughness.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+      VkDescriptorImageInfo texDescriptorMetallic =
+        vk::initializers::DescriptorImageInfo(data->colorSampler,
+          data->offScreenFrameBuf.metallic.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
       writeDescriptorSets = {
         // Binding 0 : Vertex shader uniform buffer
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
@@ -1271,9 +1331,15 @@ else
         // Binding 3 : Albedo texture target
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &texDescriptorAlbedo),
-        // Binding 4 : Fragment shader uniform buffer
+        // Binding 4 : Roughness texture target
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
-          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4, &data->uniformBuffers.fsLights.descriptor),
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &texDescriptorRoughness),
+        // Binding 5 : metallic texture target
+        vk::initializers::WriteDescriptorSet(data->descriptorSet,
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 5, &texDescriptorMetallic),
+        // Binding 6 : Fragment shader uniform buffer
+        vk::initializers::WriteDescriptorSet(data->descriptorSet,
+          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 6, &data->uniformBuffers.fsLights.descriptor),
       };
 
       vkUpdateDescriptorSets(data->device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
@@ -1292,7 +1358,13 @@ else
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &data->textures.model.colorMap.descriptor),
         // Binding 2: Normal map
         vk::initializers::WriteDescriptorSet(data->descriptorSets.model,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &data->textures.model.normalMap.descriptor)
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &data->textures.model.normalMap.descriptor),
+
+        vk::initializers::WriteDescriptorSet(data->descriptorSets.model,
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &data->textures.model.roughness.descriptor),
+
+        vk::initializers::WriteDescriptorSet(data->descriptorSets.model,
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &data->textures.model.metallic.descriptor)
       };
 
       vkUpdateDescriptorSets(data->device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
@@ -1310,7 +1382,13 @@ else
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &data->textures.floor.colorMap.descriptor),
         // Binding 2: Normal map
         vk::initializers::WriteDescriptorSet(data->descriptorSets.floor,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &data->textures.floor.normalMap.descriptor)
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &data->textures.floor.normalMap.descriptor),
+
+        vk::initializers::WriteDescriptorSet(data->descriptorSets.floor,
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &data->textures.floor.roughness.descriptor),
+
+        vk::initializers::WriteDescriptorSet(data->descriptorSets.floor,
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &data->textures.floor.metallic.descriptor)
       };
 
       vkUpdateDescriptorSets(data->device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);

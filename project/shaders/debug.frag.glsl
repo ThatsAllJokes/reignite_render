@@ -3,6 +3,8 @@
 layout (binding = 1) uniform sampler2D samplerPosition;
 layout (binding = 2) uniform sampler2D samplerNormal;
 layout (binding = 3) uniform sampler2D samplerAlbedo;
+layout (binding = 3) uniform sampler2D samplerRoughness;
+layout (binding = 3) uniform sampler2D samplerMetallic;
 
 layout (location = 0) in vec3 inUV;
 
