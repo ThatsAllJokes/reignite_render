@@ -30,9 +30,9 @@ namespace Reignite {
 
    protected:
 
-    std::shared_ptr<State> state;
-
     bool is_running;
+
+    std::shared_ptr<State> state;
     std::unique_ptr<Window> window;
     std::unique_ptr<ComponentSystem> component_system;
     std::unique_ptr<RenderContext> render_context;

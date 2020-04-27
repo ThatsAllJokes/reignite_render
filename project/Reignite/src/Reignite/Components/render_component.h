@@ -1,22 +1,22 @@
 #ifndef _RI_RENDER_COMPONENT_H_
 #define _RI_RENDER_COMPONENT_H_ 1
 
-#include "base_component.h"
 #include "../basic_types.h"
+
+#include "base_component.h"
 
 
 namespace Reignite {
 
-  struct RenderComponent : public BaseComponent {
+  struct RenderComponents : public BaseComponents {
   
-    RenderComponent();
+    void UpdateRenderComponents();
 
-    s16 geometry;
-    s16 material;
-    s16 texture;
+    std::vector<s16> geometry;
+    std::vector<s16> material;
+    std::vector<s16> texture;
   };
 
-  void UpdateRenderComponent(RenderComponent& rc);
 }
 
 #endif // _RI_RENDER_CONTEXT_H_

@@ -22,6 +22,10 @@ namespace Reignite {
     ComponentSystem(const std::shared_ptr<State> state);
     ~ComponentSystem();
 
+    vec3f viewPosition();
+    mat4f view();
+    mat4f projection();
+
     void update();
 
    private:

@@ -4,6 +4,9 @@
 
 #include "tools.h"
 
+#include "window.h"
+#include "component_system.h"
+
 #include "Vulkan/vulkan_overlay.h"
 #include "Vulkan/vulkan_impl.h"
 #include "Vulkan/vulkan_texture.h"
@@ -23,33 +26,19 @@ namespace Reignite {
 
   struct State {
 
-    std::string title;
-    u16 width;
-    u16 height;
-
     float frameTimer;
 
-    GLFWwindow* window;
-    vec2f mousePos;
+    std::shared_ptr<Window> window;
+    Input* input;
 
+    vec2f mousePos;
     struct {
       bool left = false;
       bool right = false;
       bool middle = false;
     } mouseButtons;
 
-    struct Entity {
-      std::vector<s32> entity;
-      std::vector<s32> parent;
-    } entities;
-
-    CameraComponent camera;
-    std::vector<TransformComponent> transform_components;
-    std::vector<RenderComponent> render_components;
-    std::vector<LightComponent> light_components;
-
-    State(const std::string& t = "Reignite Render",
-      u16 w = 1280, u16 h = 720) : title(t), width(w), height(h) {}
+    std::shared_ptr<ComponentSystem> compSystem;
   };
 
   struct Reignite::RenderContext::Data {
@@ -61,6 +50,7 @@ namespace Reignite {
     // Render state
     bool render_should_close = false;
     bool deferred_debug_display = false;
+    bool display_skybox = true;
 
     mat4f view_matrix;
     vec3f camera_position;
@@ -161,6 +151,11 @@ namespace Reignite {
       vec4f instancePos[3];
     } uboVS, uboOffscreenVS;
 
+    struct {
+      mat4f projection;
+      mat4f model;
+    } skyboxUboVS;
+
     struct Light {
       vec4f position;
       vec3f color;
@@ -176,26 +171,32 @@ namespace Reignite {
       vk::Buffer vsFullScreen;
       vk::Buffer vsOffscreen;
       vk::Buffer fsLights;
+      vk::Buffer skybox;
     } uniformBuffers;
 
     struct {
       VkPipeline deferred;
       VkPipeline offscreen;
       VkPipeline debug;
+      VkPipeline skybox;
     } pipelines;
 
     struct {
       VkPipelineLayout deferred;
       VkPipelineLayout offscreen;
+      VkPipelineLayout skybox;
     } pipelineLayouts;
 
     struct {
       VkDescriptorSet model;
       VkDescriptorSet floor;
+      VkDescriptorSet skybox;
     } descriptorSets;
 
     VkDescriptorSet descriptorSet;
     VkDescriptorSetLayout descriptorSetLayout;
+
+    VkDescriptorSetLayout skyboxDescriptorSetLayout;
 
     struct FrameBuffer {
       int32_t width, height;
@@ -218,6 +219,7 @@ namespace Reignite {
     u32 tmp_indexCount;
 
     vk::Overlay overlay;
+    vk::TextureCubeMap cubeMap;
   };
 
   Reignite::RenderContext::RenderContext(const std::shared_ptr<State> s) {
@@ -247,6 +249,9 @@ namespace Reignite {
       break;
     case kGeometryEnum_Load: 
       current_geometry = GeometryResourceLoadObj(path);
+      break;
+    case kGeometryEnum_Terrain: 
+      current_geometry = GeometryTerrain();
       break;
     }
 
@@ -281,13 +286,13 @@ namespace Reignite {
 
   void Reignite::RenderContext::setRenderInfo() {
   
-    data->view_matrix = state->camera.view_mat;
-    data->camera_position = state->camera.position;
-    data->projection_matrix = state->camera.projection_mat;
+    //data->view_matrix = state->compSystem->camera.view;
+    //data->camera_position = state->camera.position;
+    //data->projection_matrix = state->camera.projection;
 
-    for (u32 i = 0; i < state->transform_components.size(); ++i) {
-      data->model_list.push_back(state->transform_components[i].global);
-    }
+    /*for (u32 i = 0; i < state->transform_components.size(); ++i) {
+      data->model_list.push_back(state->transform_components->transformComponents.global[i]);
+    }*/
   }
 
   void Reignite::RenderContext::buildDeferredCommands() {
@@ -336,10 +341,19 @@ namespace Reignite {
       data->offScreenFrameBuf.width, data->offScreenFrameBuf.height, 0, 0);
     vkCmdSetScissor(data->offScreenCmdBuffer, 0, 1, &scissor);
 
-    vkCmdBindPipeline(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      data->pipelines.offscreen);
-
     VkDeviceSize offsets[1] = { 0 };
+
+    // Skybox
+    if (data->display_skybox) {
+
+      vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.skybox, 0, 1, &data->descriptorSets.skybox, 0, NULL);
+      vkCmdBindVertexBuffers(data->offScreenCmdBuffer, 0, 1, &data->geometries[1].vertexBuffer.buffer, offsets);
+      vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[1].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+      vkCmdBindPipeline(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.skybox);
+      vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[1].indices.size(), 1, 0, 0, 0);
+    }
+
+    vkCmdBindPipeline(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.offscreen);
 
     // Background
     vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.floor, 0, NULL);
@@ -348,10 +362,10 @@ namespace Reignite {
     vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[0].indices.size(), 1, 0, 0, 0);
 
     // Object
-    //vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.model, 0, NULL);
-    //vkCmdBindVertexBuffers(data->offScreenCmdBuffer, /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->geometries[0].vertexBuffer.buffer, offsets);
-    //vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[0].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-    //vkCmdDrawIndexed(data->offScreenCmdBuffer, data->geometries[0].indices.size(), 3, 0, 0, 0);
+    vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.model, 0, NULL);
+    vkCmdBindVertexBuffers(data->offScreenCmdBuffer, /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->geometries[2].vertexBuffer.buffer, offsets);
+    vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[2].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[2].indices.size(), 3, 0, 0, 0);
 
     vkCmdEndRenderPass(data->offScreenCmdBuffer);
 
@@ -370,8 +384,8 @@ namespace Reignite {
     renderPassBeginInfo.renderPass = data->renderPass;
     renderPassBeginInfo.renderArea.offset.x = 0;
     renderPassBeginInfo.renderArea.offset.y = 0;
-    renderPassBeginInfo.renderArea.extent.width = state->width;
-    renderPassBeginInfo.renderArea.extent.height = state->height;
+    renderPassBeginInfo.renderArea.extent.width = state->window->width();
+    renderPassBeginInfo.renderArea.extent.height = state->window->height();
     renderPassBeginInfo.clearValueCount = 2;
     renderPassBeginInfo.pClearValues = clearValues;
 
@@ -383,17 +397,17 @@ namespace Reignite {
 
       vkCmdBeginRenderPass(data->commandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-      VkViewport viewport = vk::initializers::Viewport((float)state->width, (float)state->height, 0.0f, 1.0f);
+      VkViewport viewport = vk::initializers::Viewport((float)state->window->width(), (float)state->window->height(), 0.0f, 1.0f);
       vkCmdSetViewport(data->commandBuffers[i], 0, 1, &viewport);
 
-      VkRect2D scissor = vk::initializers::Rect2D(state->width, state->height, 0, 0);
+      VkRect2D scissor = vk::initializers::Rect2D(state->window->width(), state->window->height(), 0, 0);
       vkCmdSetScissor(data->commandBuffers[i], 0, 1, &scissor);
 
       VkDeviceSize offsets[1] = { 0 };
-      vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.deferred, 0, 1, &data->descriptorSet, 0, NULL);
 
       if (data->deferred_debug_display) {
 
+        vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.deferred, 0, 1, &data->descriptorSet, 0, NULL);
         vkCmdBindPipeline(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.debug);
         vkCmdBindVertexBuffers(data->commandBuffers[i], /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->tmp_vertices.buffer, offsets);
         vkCmdBindIndexBuffer(data->commandBuffers[i], data->tmp_indices.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -406,15 +420,16 @@ namespace Reignite {
         vkCmdSetViewport(data->commandBuffers[i], 0, 1, &viewport);
       }
 
+      vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.deferred, 0, 1, &data->descriptorSet, 0, NULL);
       vkCmdBindPipeline(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.deferred);
-      vkCmdBindVertexBuffers(data->commandBuffers[i], /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->tmp_vertices.buffer, offsets);
-      vkCmdBindIndexBuffer(data->commandBuffers[i], data->tmp_indices.buffer, 0, VK_INDEX_TYPE_UINT32);
-      vkCmdDrawIndexed(data->commandBuffers[i], 6, 1, 0, 0, 1);
+      //vkCmdBindVertexBuffers(data->commandBuffers[i], /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->tmp_vertices.buffer, offsets);
+      //vkCmdBindIndexBuffer(data->commandBuffers[i], data->tmp_indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+      vkCmdDraw(data->commandBuffers[i], 6, 1, 0, 0);
 
-      //TODO: Draw UI call should be here
+      // Draw UI call should be here
       {
-        const VkViewport viewport = vk::initializers::Viewport((float)state->width, (float)state->height, 0.0f, 1.0f);
-        const VkRect2D scissor = vk::initializers::Rect2D(state->width, state->height, 0, 0);
+        const VkViewport viewport = vk::initializers::Viewport((float)state->window->width(), (float)state->window->height(), 0.0f, 1.0f);
+        const VkRect2D scissor = vk::initializers::Rect2D(state->window->width(), state->window->height(), 0, 0);
         vkCmdSetViewport(data->commandBuffers[i], 0, 1, &viewport);
         vkCmdSetScissor(data->commandBuffers[i], 0, 1, &scissor);
 
@@ -431,9 +446,13 @@ namespace Reignite {
 
   void Reignite::RenderContext::draw() {
 
+    setRenderInfo();
+    updateUniformBufferDeferredMatrices();
+    updateUniformBufferDeferredLights();
+
     ImGuiIO& io = ImGui::GetIO();
 
-    io.DisplaySize = ImVec2((float)state->width, (float)state->height);
+    io.DisplaySize = ImVec2((float)state->window->width(), (float)state->window->height());
     io.DeltaTime = state->frameTimer;
 
     io.MousePos = ImVec2(state->mousePos.x, state->mousePos.y);
@@ -488,13 +507,11 @@ namespace Reignite {
       VK_CHECK(vkQueueWaitIdle(data->queue));
     }
 
-    updateUniformBufferDeferredLights();
-
     // update overlay
     {
       ImGuiIO& io = ImGui::GetIO();
 
-      io.DisplaySize = ImVec2((float)state->width, (float)state->height);
+      io.DisplaySize = ImVec2((float)state->window->width(), (float)state->window->height());
       io.DeltaTime = state->frameTimer;
 
       io.MousePos = ImVec2(state->mousePos.x, state->mousePos.y);
@@ -504,9 +521,9 @@ namespace Reignite {
       ImGui::NewFrame();
 
       ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-      //ImGui::SetNextWindowPos(ImVec2(10, 10));
-      ImGui::Begin("Test UI", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize );
-      ImGui::TextUnformatted(state->title.c_str());
+      ImGui::SetNextWindowPos(ImVec2(10, 10));
+      ImGui::Begin("Test UI", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+      ImGui::TextUnformatted(state->window->title().c_str());
       ImGui::TextUnformatted(data->physicalDeviceNames[0].c_str());
       //ImGui::Text("%.2f ms/frame (%.1d fps)", (1000.0f / lastFPS), lastFPS);
 
@@ -517,6 +534,14 @@ namespace Reignite {
       if (res) { 
         data->overlay.updated = true;
         buildCommandBuffers();
+        updateUniformBuffersScreen();
+      }
+
+      res = ImGui::Checkbox("Display skybox", &data->display_skybox);
+      if (res) {
+        data->overlay.updated = true;
+        buildCommandBuffers();
+        buildDeferredCommands();
         updateUniformBuffersScreen();
       }
 
@@ -540,6 +565,8 @@ namespace Reignite {
 
   void RenderContext::updateUniformBuffersScreen() {
 
+    setRenderInfo();
+
     if(data->deferred_debug_display) {
 
       data->uboVS.projection = glm::ortho(0.0f, 2.0f, 0.0f, 2.0f, -1.0f, 1.0f);
@@ -551,6 +578,17 @@ namespace Reignite {
 
     data->uboVS.model = mat4f(1.0f);
     memcpy(data->uniformBuffers.vsFullScreen.mapped, &data->uboVS, sizeof(data->uboVS));
+
+    mat4f viewMatrix = glm::mat4(1.0f);
+    data->skyboxUboVS.projection = glm::perspective(glm::radians(60.0f), (float)state->window->width() / (float)state->window->height(), 0.001f, 256.0f);
+
+    data->skyboxUboVS.model = glm::mat4(1.0f);
+    data->skyboxUboVS.model = viewMatrix * glm::translate(data->skyboxUboVS.model, glm::vec3(0, 0, 0));
+    data->skyboxUboVS.model = glm::rotate(data->skyboxUboVS.model, glm::radians(0.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    data->skyboxUboVS.model = glm::rotate(data->skyboxUboVS.model, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    data->skyboxUboVS.model = glm::rotate(data->skyboxUboVS.model, glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+    memcpy(data->uniformBuffers.skybox.mapped, &data->skyboxUboVS, sizeof(data->skyboxUboVS));
   }
 
   void RenderContext::updateUniformBufferDeferredMatrices() {
@@ -561,8 +599,8 @@ namespace Reignite {
     float timer = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
 
-    data->uboOffscreenVS.projection = data->projection_matrix;
-    data->uboOffscreenVS.view = data->view_matrix;
+    data->uboOffscreenVS.projection = state->compSystem->projection();
+    data->uboOffscreenVS.view = state->compSystem->view();
     data->uboOffscreenVS.model = glm::mat4(1.0f);
 
     memcpy(data->uniformBuffers.vsOffscreen.mapped, &data->uboOffscreenVS, sizeof(data->uboOffscreenVS));
@@ -616,7 +654,7 @@ namespace Reignite {
     data->uboFragmentLights.lights[5].position.z = 0.0f - cos(glm::radians(-360.0f * timer - 45.0f)) * 10.0f;
 
     // Current view position
-    data->uboFragmentLights.viewPos = glm::vec4(data->camera_position, 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
+    data->uboFragmentLights.viewPos = glm::vec4(state->compSystem->viewPosition(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
 
     memcpy(data->uniformBuffers.fsLights.mapped, &data->uboFragmentLights, sizeof(data->uboFragmentLights));
 
@@ -634,18 +672,39 @@ namespace Reignite {
     data->textures.model.normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.model.roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.model.metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-
+/*
     data->textures.floor.colorMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_albedo.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.floor.normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.floor.roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.floor.metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    */
     
-    /*
     data->textures.floor.colorMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_albedo.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.floor.normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.floor.roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.floor.metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-    */
+    
+
+    std::string filename;
+    VkFormat format;
+    if (data->deviceFeatures.textureCompressionBC) {
+      filename = "textures/cubemap_yokohama_bc3_unorm.ktx";
+      format = VK_FORMAT_BC2_UNORM_BLOCK;
+    }
+    else if (data->deviceFeatures.textureCompressionASTC_LDR) {
+      filename = "textures/cubemap_yokohama_astc_8x8_unorm.ktx";
+      format = VK_FORMAT_ASTC_8x8_UNORM_BLOCK;
+    }
+    else if (data->deviceFeatures.textureCompressionETC2) {
+      filename = "textures/cubemap_yokohama_etc2_unorm.ktx";
+      format = VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK;
+    }
+    else {
+      assert(!"Compressed texture format not supported");
+    }
+
+    data->cubeMap.loadFromFile(Reignite::Tools::GetAssetPath() + filename, 
+      format, data->vulkanState, data->queue);
   }
 
   void Reignite::RenderContext::initialize(const std::shared_ptr<State> s, const RenderContextParams& params) {
@@ -715,7 +774,7 @@ namespace Reignite {
     data->submitInfo.pSignalSemaphores = &data->semaphores.renderComplete;
 
     // init swapchain
-    data->swapchain.initSurface((void*)GetModuleHandle(0), (void*)glfwGetWin32Window(state->window));
+    data->swapchain.initSurface((void*)GetModuleHandle(0), (void*)glfwGetWin32Window((GLFWwindow*)state->window->currentWindow()));
 
     // create command pool
     VkCommandPoolCreateInfo cmdPoolInfo = vk::initializers::CommandPoolCreateInfo();
@@ -724,8 +783,8 @@ namespace Reignite {
     VK_CHECK(vkCreateCommandPool(data->device, &cmdPoolInfo, nullptr, &data->commandPool));
 
     // setup swapchain
-    u32 auxWidth = (u32)state->width;
-    u32 auxHeight = (u32)state->height; // TODO: Modify window size to u32 type
+    u32 auxWidth =  (u32)state->window->width();
+    u32 auxHeight = (u32)state->window->height(); // TODO: Modify window size to u32 type
     data->swapchain.create(&auxWidth, &auxHeight);
 
     // create command buffers
@@ -1106,15 +1165,18 @@ namespace Reignite {
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         sizeof(data->uboFragmentLights), &data->uniformBuffers.fsLights));
 
+      VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        sizeof(data->skyboxUboVS), &data->uniformBuffers.skybox));
+
       VK_CHECK(data->uniformBuffers.vsFullScreen.map());
       VK_CHECK(data->uniformBuffers.vsOffscreen.map());
       VK_CHECK(data->uniformBuffers.fsLights.map());
+      VK_CHECK(data->uniformBuffers.skybox.map());
 
       data->uboOffscreenVS.instancePos[0] = glm::vec4(0.0f);
       data->uboOffscreenVS.instancePos[1] = glm::vec4(-4.0f, 0.0, -4.0f, 0.0f);
       data->uboOffscreenVS.instancePos[2] = glm::vec4(4.0f, 0.0, -4.0f, 0.0f);
-
-      setRenderInfo();
 
       updateUniformBuffersScreen();
       updateUniformBufferDeferredMatrices();
@@ -1174,92 +1236,58 @@ namespace Reignite {
 
       VK_CHECK(vkCreatePipelineLayout(data->device, &pPipelineLayoutCreateInfo, nullptr, &data->pipelineLayouts.deferred));
       VK_CHECK(vkCreatePipelineLayout(data->device, &pPipelineLayoutCreateInfo, nullptr, &data->pipelineLayouts.offscreen));
+    
+      // skybox
+      std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings2 = {
+
+        // Binding 0 : Vertex shader uniform buffer
+        vk::initializers::DescriptorSetLayoutBinding(
+          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          VK_SHADER_STAGE_VERTEX_BIT,
+          0),
+        // Binding 1 : Fragment shader image sampler
+        vk::initializers::DescriptorSetLayoutBinding(
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          VK_SHADER_STAGE_FRAGMENT_BIT,
+          1)
+      };
+
+      descriptorLayout =
+        vk::initializers::DescriptorSetLayoutCreateInfo(
+          setLayoutBindings2.data(),
+          (u32)setLayoutBindings2.size());
+
+      VK_CHECK(vkCreateDescriptorSetLayout(data->device, &descriptorLayout, nullptr, &data->skyboxDescriptorSetLayout));
+
+      pPipelineLayoutCreateInfo =
+        vk::initializers::PipelineLayoutCreateInfo(
+          &data->skyboxDescriptorSetLayout,
+          1);
+
+      VK_CHECK(vkCreatePipelineLayout(data->device, &pPipelineLayoutCreateInfo, nullptr, &data->pipelineLayouts.skybox));
     }
 
     // Prepare Pipelines
     {
-      VkPipelineInputAssemblyStateCreateInfo inputAssemblyState =
-        vk::initializers::PipelineInputAssemblyStateCreateInfo(
-          VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
-
-      VkPipelineRasterizationStateCreateInfo rasterizationState =
-        vk::initializers::PipelineRasterizationStateCreateInfo(
-        VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE, 0);
-
-      VkPipelineColorBlendAttachmentState blendAttachmentState =
-        vk::initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE);
-
-      VkPipelineColorBlendStateCreateInfo colorBlendState =
-        vk::initializers::PipelineColorBlendStateCreateInfo(1, &blendAttachmentState);
+      std::vector<VkPipelineColorBlendAttachmentState> blendAttachmentState = {
+        vk::initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
+      };
 
       VkPipelineDepthStencilStateCreateInfo depthStencilState =
         vk::initializers::PipelineDepthStencilStateCreateInfo(
           VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL);
 
-      VkPipelineViewportStateCreateInfo viewportState =
-        vk::initializers::PipelineViewportStateCreateInfo(1, 1, 0);
-
-      VkPipelineMultisampleStateCreateInfo multisampleState =
-        vk::initializers::PipelineMultisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT, 0);
-
-      std::vector<VkDynamicState> dynamicStateEnables = {
-        VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
-
-      VkPipelineDynamicStateCreateInfo dynamicState =
-        vk::initializers::PipelineDynamicStateCreateInfo(
-          dynamicStateEnables.data(), static_cast<u32>(dynamicStateEnables.size()), 0);
-
-      std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages = {};
-
-      VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo =
-        vk::initializers::GraphicsPipelineCreateInfo(
-          data->pipelineLayouts.deferred, data->renderPass, 0);
-
-      graphicsPipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
-      graphicsPipelineCreateInfo.pRasterizationState = &rasterizationState;
-      graphicsPipelineCreateInfo.pColorBlendState = &colorBlendState;
-      graphicsPipelineCreateInfo.pMultisampleState = &multisampleState;
-      graphicsPipelineCreateInfo.pViewportState = &viewportState;
-      graphicsPipelineCreateInfo.pDepthStencilState = &depthStencilState;
-      graphicsPipelineCreateInfo.pDynamicState = &dynamicState;
-      graphicsPipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-      graphicsPipelineCreateInfo.pStages = shaderStages.data();
-
-      shaderStages[0] = loadShader(data->device, 
-        Reignite::Tools::GetAssetPath() + "shaders/deferred.vert.spv",
-        VK_SHADER_STAGE_VERTEX_BIT);
-    
-      shaderStages[1] = loadShader(data->device,
-        Reignite::Tools::GetAssetPath() + "shaders/deferred.frag.spv",
-        VK_SHADER_STAGE_FRAGMENT_BIT);
-
       VkPipelineVertexInputStateCreateInfo emptyInputState = vk::initializers::PipelineVertexInputStateCreateInfo();
-      graphicsPipelineCreateInfo.pVertexInputState = &emptyInputState;
-      graphicsPipelineCreateInfo.layout = data->pipelineLayouts.deferred;
-      VK_CHECK(vkCreateGraphicsPipelines(data->device, data->pipelineCache, 1, &graphicsPipelineCreateInfo, nullptr, &data->pipelines.deferred));
 
-      graphicsPipelineCreateInfo.pVertexInputState = &data->vertices.inputState;
-      shaderStages[0] = loadShader(data->device,
-        Reignite::Tools::GetAssetPath() + "shaders/debug.vert.spv",
-        VK_SHADER_STAGE_VERTEX_BIT);
+      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelineLayouts.deferred, data->renderPass,
+        "deferred", data->pipelineCache, data->pipelines.deferred, emptyInputState, blendAttachmentState, 
+        depthStencilState, VK_FRONT_FACE_CLOCKWISE));
+      
+      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelineLayouts.deferred, data->renderPass,
+        "debug", data->pipelineCache, data->pipelines.debug, data->vertices.inputState, blendAttachmentState, 
+        depthStencilState, VK_FRONT_FACE_CLOCKWISE));
 
-      shaderStages[1] = loadShader(data->device,
-        Reignite::Tools::GetAssetPath() + "shaders/debug.frag.spv",
-        VK_SHADER_STAGE_FRAGMENT_BIT);
-      VK_CHECK(vkCreateGraphicsPipelines(data->device, data->pipelineCache, 1, &graphicsPipelineCreateInfo, nullptr, &data->pipelines.debug));
-
-      shaderStages[0] = loadShader(data->device,
-        Reignite::Tools::GetAssetPath() + "shaders/mrt.vert.spv",
-        VK_SHADER_STAGE_VERTEX_BIT);
-
-      shaderStages[1] = loadShader(data->device,
-        Reignite::Tools::GetAssetPath() + "shaders/mrt.frag.spv",
-        VK_SHADER_STAGE_FRAGMENT_BIT);
-
-      graphicsPipelineCreateInfo.renderPass = data->offScreenFrameBuf.renderPass;
-      graphicsPipelineCreateInfo.layout = data->pipelineLayouts.offscreen;
-
-      std::array<VkPipelineColorBlendAttachmentState, 5> blendAttachmentStates = {
+      std::vector<VkPipelineColorBlendAttachmentState> blendAttachmentStates = {
         vk::initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
         vk::initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
         vk::initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
@@ -1267,10 +1295,33 @@ namespace Reignite {
         vk::initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE)
       };
 
-      colorBlendState.attachmentCount = static_cast<uint32_t>(blendAttachmentStates.size());
-      colorBlendState.pAttachments = blendAttachmentStates.data();
+      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelineLayouts.offscreen, data->offScreenFrameBuf.renderPass,
+        "mrt", data->pipelineCache, data->pipelines.offscreen, data->vertices.inputState, blendAttachmentStates, depthStencilState,
+        VK_FRONT_FACE_CLOCKWISE));
 
-      VK_CHECK(vkCreateGraphicsPipelines(data->device, data->pipelineCache, 1, &graphicsPipelineCreateInfo, nullptr, &data->pipelines.offscreen));
+      // skybox
+      depthStencilState = vk::initializers::PipelineDepthStencilStateCreateInfo(
+        VK_FALSE,
+        VK_FALSE,
+        VK_COMPARE_OP_LESS_OR_EQUAL);
+
+      VkVertexInputBindingDescription vertexInputBinding =
+        vk::initializers::VertexInputBindingDescription(0, 32, VK_VERTEX_INPUT_RATE_VERTEX);
+
+      std::vector<VkVertexInputAttributeDescription> vertexInputAttributes = {
+        vk::initializers::VertexInputAttributeDescription(0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0),					        // Location 0: Position
+        vk::initializers::VertexInputAttributeDescription(0, 1, VK_FORMAT_R32G32B32_SFLOAT, sizeof(float) * 3),	// Location 1: Normal
+      };
+
+      VkPipelineVertexInputStateCreateInfo vertexInputState = vk::initializers::PipelineVertexInputStateCreateInfo();
+      vertexInputState.vertexBindingDescriptionCount = 1;
+      vertexInputState.pVertexBindingDescriptions = &vertexInputBinding;
+      vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputAttributes.size());
+      vertexInputState.pVertexAttributeDescriptions = vertexInputAttributes.data();
+
+      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelineLayouts.skybox, data->offScreenFrameBuf.renderPass,
+        "skybox", data->pipelineCache, data->pipelines.skybox, vertexInputState, blendAttachmentStates, depthStencilState,
+        VK_FRONT_FACE_COUNTER_CLOCKWISE));
     }
 
     // Setup DescriptorPool
@@ -1296,8 +1347,6 @@ namespace Reignite {
         vk::initializers::DescriptorSetAllocateInfo(
           data->descriptorPool, &data->descriptorSetLayout, 1);
 
-      VK_CHECK(vkAllocateDescriptorSets(data->device, &allocInfo, &data->descriptorSet));
-
       VkDescriptorImageInfo texDescriptorPosition =
         vk::initializers::DescriptorImageInfo(data->colorSampler,
           data->offScreenFrameBuf.position.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -1317,6 +1366,8 @@ namespace Reignite {
       VkDescriptorImageInfo texDescriptorMetallic =
         vk::initializers::DescriptorImageInfo(data->colorSampler,
           data->offScreenFrameBuf.metallic.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+      VK_CHECK(vkAllocateDescriptorSets(data->device, &allocInfo, &data->descriptorSet));
 
       writeDescriptorSets = {
         // Binding 0 : Vertex shader uniform buffer
@@ -1392,12 +1443,43 @@ namespace Reignite {
       };
 
       vkUpdateDescriptorSets(data->device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
+    
+      // Sky box descriptor set
+      allocInfo = vk::initializers::DescriptorSetAllocateInfo(
+        data->descriptorPool, &data->skyboxDescriptorSetLayout, 1);
+
+      VkDescriptorImageInfo textureDescriptor =
+        vk::initializers::DescriptorImageInfo(
+          data->cubeMap.sampler,
+          data->cubeMap.view,
+          data->cubeMap.imageLayout);
+
+      VK_CHECK(vkAllocateDescriptorSets(data->device, &allocInfo, &data->descriptorSets.skybox));
+
+      writeDescriptorSets =
+      {
+        // Binding 0 : Vertex shader uniform buffer
+        vk::initializers::WriteDescriptorSet(
+          data->descriptorSets.skybox,
+          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          0,
+          &data->uniformBuffers.skybox.descriptor),
+        // Binding 1 : Fragment shader cubemap sampler
+        vk::initializers::WriteDescriptorSet(
+          data->descriptorSets.skybox,
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          1,
+          &textureDescriptor)
+      };
+      vkUpdateDescriptorSets(data->device, (u32)writeDescriptorSets.size(), writeDescriptorSets.data(), 0, NULL);
     }
 
     // Creation of engine graphic resources ->
 
     createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/geosphere.obj");
     createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/box.obj");
+    createGeometryResource(kGeometryEnum_Terrain);
+    
 
     //createMaterialResource();
     //createMaterialResource();

@@ -26,9 +26,10 @@ namespace Reignite {
    public:
     
     enum GeometryEnum {
-      kGeometryEnum_Square,
-      kGeometryEnum_Cube,
-      kGeometryEnum_Load
+       kGeometryEnum_Square,
+       kGeometryEnum_Cube,
+       kGeometryEnum_Load,
+       kGeometryEnum_Terrain
     };
 
     RenderContext(const std::shared_ptr<State> state);

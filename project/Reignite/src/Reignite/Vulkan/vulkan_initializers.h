@@ -371,6 +371,16 @@ namespace initializers {
     return createInfo;
   }
 
+  inline VkPipelineColorBlendStateCreateInfo PipelineColorBlendStateCreateInfo(
+    const std::vector<VkPipelineColorBlendAttachmentState>& pAttachments) {
+
+    VkPipelineColorBlendStateCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    createInfo.attachmentCount = (u32)pAttachments.size();
+    createInfo.pAttachments = pAttachments.data();
+    return createInfo;
+  }
+
   inline VkPipelineDepthStencilStateCreateInfo PipelineDepthStencilStateCreateInfo(
     VkBool32 depthTestEnable, VkBool32 depthWriteEnable, VkCompareOp depthCompareOp) {
 

@@ -114,13 +114,11 @@ bool Reignite::Tools::LoadObjFile(std::string filename, GeometryResource& geomet
       vertex.texcoord[1] = 1.0f - attrib.texcoords[2 * index.texcoord_index + 1];
 
       geometry.vertices.push_back(vertex);
-      geometry.indices.push_back(geometry.indices.size());
+      geometry.indices.push_back((u32)geometry.indices.size());
     }
   }
 
-  std::vector<vec3f> tangents;
-  //std::vector<vec3f> bitangents;
-
+  // calculate tangents from obj received data
   for (u32 i = 0; i < geometry.vertices.size(); i += 3) {
 
     vec3f v0(geometry.vertices[i + 0].position[0], geometry.vertices[i + 0].position[1], geometry.vertices[i + 0].position[2]);
@@ -152,6 +150,84 @@ bool Reignite::Tools::LoadObjFile(std::string filename, GeometryResource& geomet
     geometry.vertices[i + 2].tangent[0] = tangent.x;
     geometry.vertices[i + 2].tangent[1] = tangent.y;
     geometry.vertices[i + 2].tangent[2] = tangent.z;
+  }
+
+  return true;
+}
+
+bool Reignite::Tools::GenerateTerrain(GeometryResource& geometry, 
+  u32 width, u32 lenght, void(*HeigthFunction)()) {
+
+  float auxSize = 0.5f;
+
+  for (u32 j = 0; j < lenght; ++j) {
+    for (u32 i = 0; i < width; ++i) {
+
+      Vertex vertex = {};
+      vertex.position[0] = i * auxSize;
+      vertex.position[1] = 0.0f;
+      vertex.position[2] = j * auxSize;
+
+      vertex.normal[0] = 0.0f;
+      vertex.normal[1] = 1.0f;
+      vertex.normal[2] = 0.0f;
+
+      vertex.texcoord[0] = (float)j;
+      vertex.texcoord[1] = (float)i;
+    
+      vertex.color[0] = 0.0f;
+      vertex.color[1] = 0.0f;
+      vertex.color[2] = 0.0f;
+
+      geometry.vertices.push_back(vertex);
+    }
+  }
+
+  for (u32 i = 0; i < geometry.vertices.size(); i += 3) {
+
+    vec3f v0(geometry.vertices[i + 0].position[0], geometry.vertices[i + 0].position[1], geometry.vertices[i + 0].position[2]);
+    vec3f v1(geometry.vertices[i + 1].position[0], geometry.vertices[i + 1].position[1], geometry.vertices[i + 1].position[2]);
+    vec3f v2(geometry.vertices[i + 2].position[0], geometry.vertices[i + 2].position[1], geometry.vertices[i + 2].position[2]);
+
+    vec2f uv0(geometry.vertices[i + 0].texcoord[0], geometry.vertices[i + 0].texcoord[1]);
+    vec2f uv1(geometry.vertices[i + 1].texcoord[0], geometry.vertices[i + 1].texcoord[1]);
+    vec2f uv2(geometry.vertices[i + 2].texcoord[0], geometry.vertices[i + 2].texcoord[1]);
+
+    vec3f deltaPos1 = v1 - v0;
+    vec3f deltaPos2 = v2 - v0;
+
+    vec2f deltaUV1 = uv1 - uv0;
+    vec2f deltaUV2 = uv2 - uv0;
+
+    float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
+    vec3f tangent = (deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y) * r;
+    //vec3f bitangent = (deltaPos2 * deltaUV1.x - deltaPos1 * deltaUV2.x) * r;
+
+    geometry.vertices[i + 0].tangent[0] = tangent.x;
+    geometry.vertices[i + 0].tangent[1] = tangent.y;
+    geometry.vertices[i + 0].tangent[2] = tangent.z;
+
+    geometry.vertices[i + 1].tangent[0] = tangent.x;
+    geometry.vertices[i + 1].tangent[1] = tangent.y;
+    geometry.vertices[i + 1].tangent[2] = tangent.z;
+
+    geometry.vertices[i + 2].tangent[0] = tangent.x;
+    geometry.vertices[i + 2].tangent[1] = tangent.y;
+    geometry.vertices[i + 2].tangent[2] = tangent.z;
+  }
+
+  geometry.indices.resize(6 * width * lenght);
+  for (u32 j = 0; j < lenght - 1; ++j) {
+    for (u32 i = 0; i < width - 1; ++i) {
+            
+      geometry.indices[(i * 6 * lenght) + (j * 6) + 0] = (j * width + i) + width;
+      geometry.indices[(i * 6 * lenght) + (j * 6) + 1] = (j * width + i) + 0;
+      geometry.indices[(i * 6 * lenght) + (j * 6) + 2] = (j * width + i) + 1;
+
+      geometry.indices[(i * 6 * lenght) + (j * 6) + 3] = (j * width + i) + 1;
+      geometry.indices[(i * 6 * lenght) + (j * 6) + 4] = (j * width + i) + width + 1;
+      geometry.indices[(i * 6 * lenght) + (j * 6) + 5] = (j * width + i) + width;
+    }
   }
 
   return true;

@@ -10,13 +10,16 @@
 
 namespace vk {
 
+  class VulkanState;
+
   class Texture {
    public:
 
     void updateDescriptor();
     void destroy();
 
-    VkDevice device; // temporal
+    VulkanState* vulkanState;
+    VkDevice device; // temporal // TODO: modify to vulkan state
     VkPhysicalDevice physicalDevice; // temporal
 
     VkImage image;
@@ -49,7 +52,10 @@ namespace vk {
   class TextureCubeMap : public Texture {
    public:
 
-    void loadFromFile(std::string file);
+    void loadFromFile(std::string filename, VkFormat format,
+      vk::VulkanState* vulkanState, VkQueue copyQueue,
+      VkImageUsageFlags imageUsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
+      VkImageLayout imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   };
 
 } // end of vk namespace

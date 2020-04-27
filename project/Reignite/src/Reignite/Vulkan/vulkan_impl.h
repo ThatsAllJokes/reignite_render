@@ -28,6 +28,20 @@
 #include "../log.h"
 
 
+// New implementation start --->
+
+VkResult CreateGraphicsPipeline(VkDevice device, VkPipelineLayout pipelineLayout,
+  VkRenderPass renderPass, std::string shader, VkPipelineCache pipelineCache,
+  VkPipeline& pipeline, VkPipelineVertexInputStateCreateInfo vertexInputState,
+  std::vector<VkPipelineColorBlendAttachmentState> blendAttachmentStates,
+  VkPipelineDepthStencilStateCreateInfo depthStencilState,
+  VkFrontFace frontFace);
+
+
+// New implementation end <---
+
+
+
 struct FrameBufferAttachment {
   VkImage image;
   VkDeviceMemory mem;

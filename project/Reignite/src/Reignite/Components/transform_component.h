@@ -1,26 +1,24 @@
 #ifndef _TRANSFORM_COMPONENT_
 #define _TRANSFORM_COMPONENT_ 1
 
-#include "base_component.h"
 #include "../basic_types.h"
+
+#include "base_component.h"
 
 
 namespace Reignite {
 
-  struct TransformComponent : public BaseComponent {
+  struct TransformComponents : public BaseComponents {
 
-    TransformComponent();
-    TransformComponent(const TransformComponent& tc);
-
-    vec3f position;
-    vec3f rotation;
-    vec3f scale;
-    mat4f local;
-    mat4f global;
-    mat4f* parent_world;
+    void UpdateTransformComponents();
+    
+    std::vector<vec3f> positions = {};
+    std::vector<vec3f> rotations = {};
+    std::vector<vec3f> scales = {};
+    std::vector<mat4f> locals = {};
+    std::vector<mat4f> globals = {};
   };
 
-  void UpdateTransformComponent(TransformComponent& tc);
 }
 
 #endif // _TRANSFORM_COMPONENT_

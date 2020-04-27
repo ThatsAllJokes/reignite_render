@@ -98,3 +98,11 @@ Geometry GeometryResourceTextureCube() {
 
   return cube;
 }
+
+Geometry GeometryTerrain() {
+
+  Geometry obj_geometry = {};
+  Reignite::Tools::GenerateTerrain(obj_geometry, 12, 12);
+
+  return obj_geometry;
+}

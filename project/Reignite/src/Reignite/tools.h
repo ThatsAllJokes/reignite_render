@@ -21,6 +21,8 @@ namespace Tools {
 
   bool LoadObjFile(std::string filename, GeometryResource& geometry);
 
+  bool GenerateTerrain(GeometryResource& geometry, u32 width, u32 lenght, void(*HeigthFunction)() = nullptr);
+
 }} // end of Reignite::Tools namespace
 
 #endif // _RI_TOOLS_

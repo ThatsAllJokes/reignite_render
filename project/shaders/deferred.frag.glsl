@@ -97,7 +97,7 @@ void main() {
   material.r = 1.0;
   material.g = 1.0;
   material.b = 1.0;
-  material.roughness = 1.0;
+  material.roughness = 0.0;
   material.metallic = 1.0;
 
 	// Get G-Buffer values
@@ -107,7 +107,7 @@ void main() {
   float roughness = texture(samplerRoughness, inUV).r;
   float metallic = texture(samplerMetallic, inUV).r;
 	
-	#define lightCount 2
+	#define lightCount 6
 	
 	vec3 N = normalize(normal);
 	vec3 V = normalize(-ubo.viewPos.xyz); 	// Viewer to fragment
@@ -141,7 +141,7 @@ void main() {
 	  fragcolor += (kD * albedo / PI + spec) * dotNL * radiance;
 	}
   
-  vec3 ambient = vec3(0.03 * albedo);
+  vec3 ambient = vec3(0.1 * albedo);
   vec3 color = ambient + fragcolor;
   
   color = color / (color + vec3(1.0));

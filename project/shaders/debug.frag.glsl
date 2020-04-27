@@ -3,8 +3,8 @@
 layout (binding = 1) uniform sampler2D samplerPosition;
 layout (binding = 2) uniform sampler2D samplerNormal;
 layout (binding = 3) uniform sampler2D samplerAlbedo;
-layout (binding = 3) uniform sampler2D samplerRoughness;
-layout (binding = 3) uniform sampler2D samplerMetallic;
+layout (binding = 4) uniform sampler2D samplerRoughness;
+layout (binding = 5) uniform sampler2D samplerMetallic;
 
 layout (location = 0) in vec3 inUV;
 
@@ -20,6 +20,6 @@ void main()
 	//components[2] = vec3(texture(samplerAlbedo, inUV.st).a);  
 	
 	// Select component depending on z coordinate of quad
-	highp int index = int(inUV.z);
+	/*highp*/ int index = int(inUV.z);
 	outFragColor.rgb = components[index];
 }

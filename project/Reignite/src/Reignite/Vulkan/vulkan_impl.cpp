@@ -2,8 +2,77 @@
 
 #include <stb_image.h>
 
+#include "../tools.h"
+
 #include "../render_context.h"
 #include "../GfxResources/material_resource.h"
+
+
+// new implementation start --->
+
+VkResult CreateGraphicsPipeline(VkDevice device, VkPipelineLayout pipelineLayout, 
+  VkRenderPass renderPass, std::string shader, VkPipelineCache pipelineCache, 
+  VkPipeline& pipeline, VkPipelineVertexInputStateCreateInfo vertexInputState,
+  std::vector<VkPipelineColorBlendAttachmentState> blendAttachmentStates,
+  VkPipelineDepthStencilStateCreateInfo depthStencilState,
+  VkFrontFace frontFace) {
+
+  VkPipelineInputAssemblyStateCreateInfo inputAssemblyState =
+    vk::initializers::PipelineInputAssemblyStateCreateInfo(
+      VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
+
+  VkPipelineRasterizationStateCreateInfo rasterizationState =
+    vk::initializers::PipelineRasterizationStateCreateInfo(
+      VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, frontFace, 0);
+
+  VkPipelineColorBlendStateCreateInfo colorBlendState =
+    vk::initializers::PipelineColorBlendStateCreateInfo(blendAttachmentStates);
+
+  VkPipelineViewportStateCreateInfo viewportState =
+    vk::initializers::PipelineViewportStateCreateInfo(1, 1, 0);
+
+  VkPipelineMultisampleStateCreateInfo multisampleState =
+    vk::initializers::PipelineMultisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT, 0);
+
+  std::vector<VkDynamicState> dynamicStateEnables = {
+    VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+
+  VkPipelineDynamicStateCreateInfo dynamicState =
+    vk::initializers::PipelineDynamicStateCreateInfo(
+      dynamicStateEnables.data(), static_cast<u32>(dynamicStateEnables.size()), 0);
+
+  std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages = {};
+  shaderStages[0] = loadShader(device,
+    Reignite::Tools::GetAssetPath() + "shaders/" + shader + ".vert.spv",
+    VK_SHADER_STAGE_VERTEX_BIT);
+
+  shaderStages[1] = loadShader(device,
+    Reignite::Tools::GetAssetPath() + "shaders/" + shader + ".frag.spv",
+    VK_SHADER_STAGE_FRAGMENT_BIT);
+
+  VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo =
+    vk::initializers::GraphicsPipelineCreateInfo(pipelineLayout, renderPass, 0);
+
+  graphicsPipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
+  graphicsPipelineCreateInfo.pRasterizationState = &rasterizationState;
+  graphicsPipelineCreateInfo.pColorBlendState = &colorBlendState;
+  graphicsPipelineCreateInfo.pMultisampleState = &multisampleState;
+  graphicsPipelineCreateInfo.pViewportState = &viewportState;
+  graphicsPipelineCreateInfo.pDepthStencilState = &depthStencilState;
+  graphicsPipelineCreateInfo.pDynamicState = &dynamicState;
+  graphicsPipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+  graphicsPipelineCreateInfo.pStages = shaderStages.data();
+  graphicsPipelineCreateInfo.pVertexInputState = &vertexInputState;
+
+  return vkCreateGraphicsPipelines(device, pipelineCache, 1, &graphicsPipelineCreateInfo, nullptr, &pipeline);
+}
+
+// new implementation end <----
+
+
+
+
+
 
 
 VkInstance createInstance() {
@@ -444,32 +513,6 @@ VkImageView createImageView(VkDevice device, VkImage image, VkFormat format,
   return imageView;
 }
 
-VkShaderModule loadShader(VkDevice device, const char* path) {
-
-  FILE* file = fopen(path, "rb");
-  assert(file);
-
-  fseek(file, 0, SEEK_END);
-  size_t length = ftell(file);
-  assert(length >= 0);
-  fseek(file, 0, SEEK_SET);
-
-  char* buffer = new char[length];
-  assert(buffer);
-
-  size_t rc = fread(buffer, 1, length, file);
-  assert(rc == size_t(length));
-  fclose(file);
-
-  VkShaderModuleCreateInfo createInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-  createInfo.codeSize = length;
-  createInfo.pCode = reinterpret_cast<const uint32_t*>(buffer);
-
-  VkShaderModule shaderModule = 0;
-  VK_CHECK(vkCreateShaderModule(device, &createInfo, 0, &shaderModule));
-
-  return shaderModule;
-}
 
 VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout) {
 

@@ -1,15 +1,16 @@
 #ifndef _RI_BASE_COMPONENT_
 #define _RI_BASE_COMPONENT_ 1
 
+#include <vector>
+
 
 namespace Reignite {
 
-  struct BaseComponent {
+  struct BaseComponents {
   
-    BaseComponent() : is_used(true), is_active(true) {}
-
-    bool is_used;
-    bool is_active;
+    u32 size;
+    std::vector<bool> used;
+    std::vector<bool> active;
   };
 
 } // end of Reignite namespace

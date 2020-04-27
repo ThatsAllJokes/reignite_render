@@ -34,4 +34,6 @@ Geometry GeometryResourceSquare();
 
 Geometry GeometryResourceTextureCube();
 
+Geometry GeometryTerrain();
+
 #endif // _CAMERA_COMPONENT_

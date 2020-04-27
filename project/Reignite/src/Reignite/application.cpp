@@ -6,6 +6,7 @@
 #include <GLFW/glfw3native.h>
 
 #include "timer.h"
+
 #include "window.h"
 #include "component_system.h"
 #include "render_context.h"
@@ -20,33 +21,19 @@ namespace Reignite {
 
   struct State {
 
-    std::string title;
-    u16 width;
-    u16 height;
-
     float frameTimer;
 
-    GLFWwindow* window;
-    vec2f mousePos;
+    std::shared_ptr<Window> window;
+    Input* input;
 
+    vec2f mousePos;
     struct {
       bool left = false;
       bool right = false;
       bool middle = false;
     } mouseButtons;
 
-    struct Entity {
-      std::vector<s32> entity;
-      std::vector<s32> parent;
-    } entities;
-
-    CameraComponent camera;
-    std::vector<TransformComponent> transform_components;
-    std::vector<RenderComponent> render_components;
-    std::vector<LightComponent> light_components;
-
-    State(const std::string& t = "Reignite Render",
-      u16 w = 1280, u16 h = 720) : title(t), width(w), height(h) {}
+    std::shared_ptr<ComponentSystem> compSystem;
   };
 
   Application::Application() {
@@ -61,7 +48,7 @@ namespace Reignite {
 
   void Application::Run() {
 
-    while (!window->closeWindow() && is_running) {
+    while (!state->input->isKeyDown(256) && !window->closeWindow() && is_running) {
 
       Reignite::Timer::StartTime();
 
@@ -70,7 +57,6 @@ namespace Reignite {
 
       component_system->update();
 
-      render_context->setRenderInfo();
       render_context->draw();
 
       auto timeDiff = Reignite::Timer::EndTime();
@@ -83,7 +69,12 @@ namespace Reignite {
     state = std::shared_ptr<State>(new State());
 
     window = std::unique_ptr<Window>(Window::Create(state));
+    Input::setupKeyInputs(*window.get());
+    state->window = std::make_unique<Window>(*window.get());
+
     component_system = std::unique_ptr<ComponentSystem>(new ComponentSystem(state));
+    state->compSystem = std::make_unique<ComponentSystem>(*component_system.get());
+
     render_context = std::unique_ptr<RenderContext>(new RenderContext(state));
 
     is_running = true;
