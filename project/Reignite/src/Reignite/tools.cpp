@@ -156,30 +156,31 @@ bool Reignite::Tools::LoadObjFile(std::string filename, GeometryResource& geomet
 }
 
 bool Reignite::Tools::GenerateTerrain(GeometryResource& geometry, 
-  u32 width, u32 lenght, void(*HeigthFunction)()) {
+  u32 width, u32 length, void(*HeigthFunction)()) {
 
-  float auxSize = 0.5f;
+  float auxSize = 1.0f;
 
-  for (u32 j = 0; j < lenght; ++j) {
+  std::vector<Vertex> currentVertices(width * length);
+
+  for (u32 j = 0; j < length; ++j) {
     for (u32 i = 0; i < width; ++i) {
 
-      Vertex vertex = {};
-      vertex.position[0] = i * auxSize;
-      vertex.position[1] = 0.0f;
-      vertex.position[2] = j * auxSize;
+      u32 vertex_index = j * width + i;
 
-      vertex.normal[0] = 0.0f;
-      vertex.normal[1] = 1.0f;
-      vertex.normal[2] = 0.0f;
+      currentVertices[vertex_index].position[0] = (width / 2) - (i * auxSize);
+      currentVertices[vertex_index].position[1] = 0.0f;
+      currentVertices[vertex_index].position[2] = (width / 2) - (j * auxSize);
 
-      vertex.texcoord[0] = (float)j;
-      vertex.texcoord[1] = (float)i;
+      currentVertices[vertex_index].normal[0] = 0.0f;
+      currentVertices[vertex_index].normal[1] = -1.0f;
+      currentVertices[vertex_index].normal[2] = 0.0f;
+
+      currentVertices[vertex_index].texcoord[0] = (float)j;
+      currentVertices[vertex_index].texcoord[1] = (float)i;
     
-      vertex.color[0] = 0.0f;
-      vertex.color[1] = 0.0f;
-      vertex.color[2] = 0.0f;
-
-      geometry.vertices.push_back(vertex);
+      currentVertices[vertex_index].color[0] = 0.0f;
+      currentVertices[vertex_index].color[1] = 0.0f;
+      currentVertices[vertex_index].color[2] = 0.0f;
     }
   }
 
@@ -216,17 +217,19 @@ bool Reignite::Tools::GenerateTerrain(GeometryResource& geometry,
     geometry.vertices[i + 2].tangent[2] = tangent.z;
   }
 
-  geometry.indices.resize(6 * width * lenght);
-  for (u32 j = 0; j < lenght - 1; ++j) {
+  geometry.vertices = currentVertices;
+
+  geometry.indices.resize(6 * width * length);
+  for (u32 j = 0; j < length - 1; ++j) {
     for (u32 i = 0; i < width - 1; ++i) {
             
-      geometry.indices[(i * 6 * lenght) + (j * 6) + 0] = (j * width + i) + width;
-      geometry.indices[(i * 6 * lenght) + (j * 6) + 1] = (j * width + i) + 0;
-      geometry.indices[(i * 6 * lenght) + (j * 6) + 2] = (j * width + i) + 1;
+      geometry.indices[(i * 6 * length) + (j * 6) + 0] = (j * width + i) + width;
+      geometry.indices[(i * 6 * length) + (j * 6) + 1] = (j * width + i) + 0;
+      geometry.indices[(i * 6 * length) + (j * 6) + 2] = (j * width + i) + 1;
 
-      geometry.indices[(i * 6 * lenght) + (j * 6) + 3] = (j * width + i) + 1;
-      geometry.indices[(i * 6 * lenght) + (j * 6) + 4] = (j * width + i) + width + 1;
-      geometry.indices[(i * 6 * lenght) + (j * 6) + 5] = (j * width + i) + width;
+      geometry.indices[(i * 6 * length) + (j * 6) + 3] = (j * width + i) + 1;
+      geometry.indices[(i * 6 * length) + (j * 6) + 4] = (j * width + i) + width + 1;
+      geometry.indices[(i * 6 * length) + (j * 6) + 5] = (j * width + i) + width;
     }
   }
 

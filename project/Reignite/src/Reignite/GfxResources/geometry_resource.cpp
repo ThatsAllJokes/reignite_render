@@ -102,7 +102,7 @@ Geometry GeometryResourceTextureCube() {
 Geometry GeometryTerrain() {
 
   Geometry obj_geometry = {};
-  Reignite::Tools::GenerateTerrain(obj_geometry, 12, 12);
+  Reignite::Tools::GenerateTerrain(obj_geometry, 20, 20);
 
   return obj_geometry;
 }

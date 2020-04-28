@@ -30,12 +30,26 @@
 
 // New implementation start --->
 
+VkResult CreateRenderPass(VkDevice device, VkRenderPass& renderPass,
+  std::vector<VkAttachmentReference>& colorReference,
+  std::vector<VkAttachmentReference>& depthReference,
+  std::vector<VkAttachmentDescription>& attachmentDescriptions);
+
+VkResult CreateFramebuffer(VkDevice device, VkFramebuffer& framebuffer, 
+  VkRenderPass renderPass, u32 width, u32 height, 
+  std::vector<VkImageView>& attachments);
+
+VkResult CreateSampler(VkDevice device, VkSampler& sampler);
+
 VkResult CreateGraphicsPipeline(VkDevice device, VkPipelineLayout pipelineLayout,
   VkRenderPass renderPass, std::string shader, VkPipelineCache pipelineCache,
   VkPipeline& pipeline, VkPipelineVertexInputStateCreateInfo vertexInputState,
   std::vector<VkPipelineColorBlendAttachmentState> blendAttachmentStates,
   VkPipelineDepthStencilStateCreateInfo depthStencilState,
   VkFrontFace frontFace);
+
+VkResult CreateDescriptorPool(VkDevice device, VkDescriptorPool& descriptorPool,
+  std::vector<VkDescriptorPoolSize>& poolSizes);
 
 
 // New implementation end <---
@@ -155,14 +169,9 @@ struct Image {
   uint32_t mipLevels;
 };
 
-void copyBufferToImage(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue,
-  Buffer& buffer, Image& texture);
-
 void createImage(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t width, uint32_t height,
   uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
   VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
-
-void DestroyImage(VkDevice device, Image& image);
 
 // UBO ////////////////////////////////////////////////////////////////////////////////////
 
@@ -197,13 +206,11 @@ VkDebugReportCallbackEXT registerDebugCallback(VkInstance instance);
 
 uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
-uint32_t getGraphicsFamilyIndex(VkPhysicalDevice physicalDevice);
+//uint32_t getGraphicsFamilyIndex(VkPhysicalDevice physicalDevice);
 
 VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint32_t familyIndex);
 
 VkCommandPool createCommandPool(VkDevice device, uint32_t familyIndex);
-
-std::vector<VkCommandBuffer> createCommandBuffer(VkDevice device, VkCommandPool commandPool, uint32_t imageCount);
 
 VkFormat FindSupportedFormat(VkPhysicalDevice physicalDevice, const std::vector<VkFormat>& candidates,
   VkImageTiling tiling, VkFormatFeatureFlags features);
@@ -232,8 +239,6 @@ VkFramebuffer createFramebuffer(VkDevice device, VkRenderPass renderPass,
 
 VkImageView createImageView(VkDevice device, VkImage image, VkFormat format,
   VkImageAspectFlags aspectFlags, uint32_t mipLevels);
-
-VkShaderModule loadShader(VkDevice device, const char* path);
 
 inline VkPipelineCache CreatePipelineCache(VkDevice device) {
 
@@ -271,28 +276,9 @@ VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descripto
   VkDescriptorSetLayout descriptorSetLayout, Buffer& uniformBuffer, Buffer& param,
   VkImageView textureImageView, VkSampler textureSampler);
 
-void TransitionImageLayout(VkCommandBuffer cmd, VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue,
-  VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
-
 void generateMipmaps(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool,
   VkQueue graphicsQueue, VkImage image, VkFormat format, int32_t texWidth, int32_t texHeight,
   uint32_t mipLevels);
-
-Image createTextureImage(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool,
-  VkQueue graphicsQueue);
-
-VkImageView createTextureImageView(VkDevice device, VkImage image, VkFormat format, uint32_t mipLevels);
-
-VkSampler createTextureSampler(VkDevice device, uint32_t mipLevels);
-
-bool HasStencilComponent(VkFormat format);
-
-void CreateDepthResources(VkDevice device, VkPhysicalDevice physicalDevice,
-  const Swapchain& swapchain, Image& depthImage, VkSampleCountFlagBits msaaSamples);
-
-void CreateColorResources(VkDevice device, VkPhysicalDevice physicalDevice, const Swapchain& swapchain,
-  Image& colorImage, VkFormat swapchainImageFormat, VkSampleCountFlagBits msaaSamples);
-
 
 // Deferred Tool functions ///////////////////////////////////////////////////////////////////////////////
 
