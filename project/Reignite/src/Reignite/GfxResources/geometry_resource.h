@@ -7,33 +7,29 @@
 #include "../basic_types.h"
 
 #include "../Vulkan/vulkan_impl.h"
+#include "../Vulkan/vulkan_state.h"
+#include "../Vulkan/vulkan_buffer.h"
 
 
 namespace Reignite {
 
   struct GeometryResource {
+
+    void init();
+    void destroy();
+
+    bool loadObj(std::string file);
+    bool loadTerrain(u32 width, u32 lenght);
+
     std::vector<Vertex> vertices;
     std::vector<u32> indices;
-    VkDevice device;
-    Buffer vertexBuffer;
-    Buffer indexBuffer;
+    u32 vertexSize;
+    u32 indicesSize;
+
+    vk::VulkanState* state;
+    vk::Buffer vertexBuffer;
+    vk::Buffer indexBuffer;
   };
 }
-
-typedef Reignite::GeometryResource Geometry;
-
-void CreateGeometry(Geometry& geometry);
-
-void DestroyGeometry(Geometry& geometry);
-
-Geometry GeometryResourceLoadObj(std::string file);
-
-Geometry GeometryResourceCube();
-
-Geometry GeometryResourceSquare();
-
-Geometry GeometryResourceTextureCube();
-
-Geometry GeometryTerrain();
 
 #endif // _CAMERA_COMPONENT_

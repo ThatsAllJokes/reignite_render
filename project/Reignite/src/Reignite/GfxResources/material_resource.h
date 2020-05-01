@@ -6,40 +6,40 @@
 #include "../basic_types.h"
 
 #include "../Vulkan/vulkan_impl.h"
+#include "../Vulkan/vulkan_state.h"
+#include "../Vulkan/vulkan_buffer.h"
+#include "../Vulkan/vulkan_texture.h"
+
 
 namespace Reignite {
 
   struct MaterialResource {
 
-    MaterialResource() {}
-    MaterialResource(std::string n, vec3f c, float r, float m) : name(n) {
-      params.r = c.r;
-      params.g = c.g;
-      params.b = c.b;
-      params.roughness = r;
-      params.metallic = m;
-    }
+    void init();
+    void destroy();
 
     std::string name;
     struct PushBlock {
-      float r, g, b;
+      float r;
+      float g; 
+      float b;
       float roughness;
       float metallic;
     } params;
 
-    VkDevice device;
-    Buffer uniformBuffer;
-    Buffer lightParams;
+    vk::VulkanState* vulkanState;
+    vk::Buffer uboBasics;
+    vk::Buffer uboLights;
+    vk::Buffer uboShadows;
     VkDescriptorSet descriptorSet;
+
+    vk::Texture2D colorMap;
+    vk::Texture2D normalMap;
+    vk::Texture2D roughness;
+    vk::Texture2D metallic;
   };
 
 } // end of Reignite namespace
-
-typedef Reignite::MaterialResource Material;
-
-void CreateMaterial(Material& material);
-
-void DestroyMaterial(Material& material);
 
 #endif // _RI_MATERIAL_RESOURCE_
 

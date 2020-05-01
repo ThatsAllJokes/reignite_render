@@ -7,7 +7,7 @@
 #include <GLFW/glfw3native.h>
 
 #include "log.h"
-#include "component_system.h"
+#include "state.h"
 
 #include "Components/transform_component.h"
 #include "Components/render_component.h"
@@ -18,23 +18,6 @@ namespace Reignite {
 
   static bool s_glfw_initialized = false;
   std::vector<Input*> Reignite::Input::s_instances;
-
-  struct State {
-
-    float frameTimer;
-
-    std::shared_ptr<Window> window;
-    Input* input;
-
-    vec2f mousePos;
-    struct {
-      bool left = false;
-      bool right = false;
-      bool middle = false;
-    } mouseButtons;
-
-    std::vector<ComponentSystem> compSystem;
-  };
 
   struct Window::Data {
 
@@ -54,8 +37,8 @@ namespace Reignite {
   Window::Window(const std::shared_ptr<State> s) {
 
     data = new Data();
-    data->width = 1280;
-    data->height = 720;
+    data->width = 1600;
+    data->height = 900;
     data->title = "Sample text";
     data->window = nullptr;
 

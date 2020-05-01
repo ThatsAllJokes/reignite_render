@@ -10,13 +10,18 @@ namespace Reignite {
 
   struct TransformComponents : public BaseComponents {
 
-    void UpdateTransformComponents();
+    void init(u32 maxSize);
+    void clear();
+
+    void add(vec3f position);
+
+    void update();
     
-    std::vector<vec3f> positions = {};
-    std::vector<vec3f> rotations = {};
-    std::vector<vec3f> scales = {};
-    std::vector<mat4f> locals = {};
-    std::vector<mat4f> globals = {};
+    std::vector<vec3f> position;
+    std::vector<vec3f> rotation;
+    std::vector<vec3f> scale;
+    std::vector<mat4f> local;
+    std::vector<mat4f> global;
   };
 
 }

@@ -1,17 +1,14 @@
 #include "render_context.h"
 
-#include "display_list.h"
-
 #include "tools.h"
-
-#include "window.h"
-#include "component_system.h"
+#include "state.h"
 
 #include "Vulkan/vulkan_overlay.h"
 #include "Vulkan/vulkan_impl.h"
 #include "Vulkan/vulkan_texture.h"
 #include "Vulkan/vulkan_state.h"
 #include "Vulkan/vulkan_buffer.h"
+#include "Vulkan/vulkan_framebuffer.h"
 
 #include "Components/transform_component.h"
 #include "Components/render_component.h"
@@ -24,39 +21,26 @@
 
 namespace Reignite {
 
-  struct State {
-
-    float frameTimer;
-
-    std::shared_ptr<Window> window;
-    Input* input;
-
-    vec2f mousePos;
-    struct {
-      bool left = false;
-      bool right = false;
-      bool middle = false;
-    } mouseButtons;
-
-    std::shared_ptr<ComponentSystem> compSystem;
-  };
-
   struct Reignite::RenderContext::Data {
 
     RenderContextParams params;
-    std::vector<Geometry> geometries;
-    std::vector<Material> materials;
+    std::vector<GeometryResource> geometries;
+    std::vector<MaterialResource> materials;
 
     // Render state
     bool render_should_close = false;
+
     bool deferred_debug_display = false;
+    
     bool display_skybox = true;
+    
+    bool shadows_debug_display = false;
+    bool enable_shadows = true;
 
-    mat4f view_matrix;
-    vec3f camera_position;
-    mat4f projection_matrix;
-
-    std::vector<mat4f> model_list;
+    //mat4f view_matrix;
+    //vec3f camera_position;
+    //mat4f projection_matrix;
+    //std::vector<mat4f> model_list;
 
     // Vulkan base
     VkInstance instance;
@@ -149,7 +133,13 @@ namespace Reignite {
       mat4f model;
       mat4f view;
       vec4f instancePos[3];
+      int layer;
     } uboVS, uboOffscreenVS;
+
+    struct {
+      mat4f mvp[3];
+      vec4f instancePos[3];
+    } uboShadowGS;
 
     struct {
       mat4f projection;
@@ -158,13 +148,16 @@ namespace Reignite {
 
     struct Light {
       vec4f position;
-      vec3f color;
+      vec4f target;
+      vec4f color;
       float radius;
+      mat4f view;
     };
 
     struct {
-      Light lights[6];
       vec4f viewPos;
+      Light lights[3];
+      u32 useShadows = 1;
     } uboFragmentLights;
 
     struct {
@@ -172,12 +165,14 @@ namespace Reignite {
       vk::Buffer vsOffscreen;
       vk::Buffer fsLights;
       vk::Buffer skybox;
+      vk::Buffer gsShadows;
     } uniformBuffers;
 
     struct {
       VkPipeline deferred;
       VkPipeline offscreen;
       VkPipeline debug;
+      VkPipeline shadowPass;
       VkPipeline skybox;
     } pipelines;
 
@@ -190,15 +185,15 @@ namespace Reignite {
     struct {
       VkDescriptorSet model;
       VkDescriptorSet floor;
+      VkDescriptorSet shadow;
       VkDescriptorSet skybox;
     } descriptorSets;
 
     VkDescriptorSet descriptorSet;
     VkDescriptorSetLayout descriptorSetLayout;
-
     VkDescriptorSetLayout skyboxDescriptorSetLayout;
 
-    struct FrameBuffer {
+    /*struct FrameBuffer {
       int32_t width, height;
       VkFramebuffer frameBuffer;
       FrameBufferAttachment position;
@@ -208,9 +203,13 @@ namespace Reignite {
       FrameBufferAttachment metallic;
       FrameBufferAttachment depth;
       VkRenderPass renderPass;
-    } offScreenFrameBuf;
+    } offScreenFrameBuf;*/
 
-    VkSampler colorSampler;
+    struct {
+      vk::Framebuffer* deferred;
+      vk::Framebuffer* shadow;
+    } defFramebuffers;
+
     VkCommandBuffer offScreenCmdBuffer = VK_NULL_HANDLE;
     VkSemaphore offScreenSemaphore = VK_NULL_HANDLE;
 
@@ -220,6 +219,9 @@ namespace Reignite {
 
     vk::Overlay overlay;
     vk::TextureCubeMap cubeMap;
+
+    float depthBiasConstant = 1.25f;
+    float depthBiasSlope = 1.75f;
   };
 
   Reignite::RenderContext::RenderContext(const std::shared_ptr<State> s) {
@@ -239,31 +241,35 @@ namespace Reignite {
 
   u32 Reignite::RenderContext::createGeometryResource(GeometryEnum geometry, std::string path) {
 
-    Geometry current_geometry;
+    GeometryResource current_geometry;
+    current_geometry.init();
+
     switch (geometry) {
     case kGeometryEnum_Square: 
-      current_geometry = GeometryResourceSquare();
+      //current_geometry = GeometryResourceSquare();
       break;
     case kGeometryEnum_Cube:
-      current_geometry = GeometryResourceCube();
+      //current_geometry = GeometryResourceCube();
       break;
     case kGeometryEnum_Load: 
-      current_geometry = GeometryResourceLoadObj(path);
+      current_geometry.loadObj(path);
       break;
     case kGeometryEnum_Terrain: 
-      current_geometry = GeometryTerrain();
+      current_geometry.loadTerrain(12, 12);
       break;
     }
 
-    current_geometry.device = data->device;
+    current_geometry.state = data->vulkanState;
 
-    current_geometry.vertexBuffer = createVertexBuffer(data->device, data->physicalDevice, current_geometry.vertices, data->commandPool, data->queue);
-    assert(current_geometry.vertexBuffer.buffer);
-    assert(current_geometry.vertexBuffer.bufferMemory);
+    VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      current_geometry.vertices.size() * sizeof(Vertex),
+      &current_geometry.vertexBuffer, current_geometry.vertices.data()));
 
-    current_geometry.indexBuffer = createIndexBuffer(data->device, data->physicalDevice, current_geometry.indices, data->commandPool, data->queue);
-    assert(current_geometry.indexBuffer.buffer);
-    assert(current_geometry.indexBuffer.bufferMemory);
+    VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      current_geometry.indices.size() * sizeof(u32),
+      &current_geometry.indexBuffer, current_geometry.indices.data()));
 
     data->geometries.push_back(current_geometry);
     return static_cast<u32>(data->geometries.size() - 1);
@@ -271,16 +277,24 @@ namespace Reignite {
 
   u32 Reignite::RenderContext::createMaterialResource() {
 
-    MaterialResource current_material("Gold", glm::vec3(1.0f, 0.765557f, 0.336057f), 0.1f, 1.0f);
-    current_material.device = data->device;
+    MaterialResource newMaterial;
+    newMaterial.init();
 
-    current_material.uniformBuffer = createUniformBuffer(data->device, data->physicalDevice);
-    current_material.lightParams = createUniformBufferParams(data->device, data->physicalDevice);
+    newMaterial.vulkanState = data->vulkanState;
+
+    VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      sizeof(data->uboVS), &newMaterial.uboBasics));
+
+    VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      sizeof(data->uboFragmentLights), &newMaterial.uboLights));
+
     /*current_material.descriptorSet = createDescriptorSets(data->device, data->descriptorPool, 
       data->descriptorSetLayout, current_material.uniformBuffer, current_material.lightParams, 
       data->texture.imageView, data->textureSampler);*/
 
-    data->materials.push_back(current_material);
+    data->materials.push_back(newMaterial);
     return static_cast<u32>(data->materials.size() - 1);
   }
 
@@ -299,13 +313,7 @@ namespace Reignite {
 
     if (data->offScreenCmdBuffer == VK_NULL_HANDLE) {
       
-      VkCommandBufferAllocateInfo cmdBuffAllocateInfo =
-        vk::initializers::CommandBufferAllocateInfo(
-          data->commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
-
-      VkCommandBuffer cmdBuffer;
-      VK_CHECK(vkAllocateCommandBuffers(data->device, &cmdBuffAllocateInfo, &cmdBuffer));
-      data->offScreenCmdBuffer = cmdBuffer;
+      data->offScreenCmdBuffer = data->vulkanState->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, false);
     }
 
     VkSemaphoreCreateInfo semaphoreCreateInfo = vk::initializers::SemaphoreCreateInfo();
@@ -313,7 +321,57 @@ namespace Reignite {
   
     VkCommandBufferBeginInfo cmdBufferInfo = vk::initializers::CommandBufferBeginInfo();
 
-    std::array<VkClearValue, 6> clearValues;
+    VkRenderPassBeginInfo renderPassBeginInfo = vk::initializers::RenderPassBeginInfo();
+    std::array<VkClearValue, 6> clearValues = {};
+    VkViewport viewport;
+    VkRect2D scissor;
+
+    // Pass 1: Shadow map generation ->
+    clearValues[0].depthStencil = { 1.0f, 0 };
+
+    renderPassBeginInfo.renderPass = data->defFramebuffers.shadow->renderPass;
+    renderPassBeginInfo.framebuffer = data->defFramebuffers.shadow->framebuffer;
+    renderPassBeginInfo.renderArea.extent.width = data->defFramebuffers.shadow->width;
+    renderPassBeginInfo.renderArea.extent.height = data->defFramebuffers.shadow->height;
+    renderPassBeginInfo.clearValueCount = 1;
+    renderPassBeginInfo.pClearValues = clearValues.data();
+
+    VK_CHECK(vkBeginCommandBuffer(data->offScreenCmdBuffer, &cmdBufferInfo));
+
+    viewport = vk::initializers::Viewport((float)data->defFramebuffers.shadow->width, (float)data->defFramebuffers.shadow->height, 0.0f, 1.0f);
+    vkCmdSetViewport(data->offScreenCmdBuffer, 0, 1, &viewport);
+
+    scissor = vk::initializers::Rect2D(data->defFramebuffers.shadow->width, data->defFramebuffers.shadow->height, 0, 0);
+    vkCmdSetScissor(data->offScreenCmdBuffer, 0, 1, &scissor);
+
+    // Set depth bias (aka "Polygon offset")
+    vkCmdSetDepthBias(
+      data->offScreenCmdBuffer,
+      data->depthBiasConstant,
+      0.0f,
+      data->depthBiasSlope);
+
+    vkCmdBeginRenderPass(data->offScreenCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBindPipeline(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.shadowPass);
+    
+    //renderScene(data->offScreenCmdBuffer, true);
+    VkDeviceSize offsets[1] = { 0 };
+
+    vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.shadow, 0, NULL);
+    vkCmdBindVertexBuffers(data->offScreenCmdBuffer, 0, 1, &data->geometries[0].vertexBuffer.buffer, offsets);
+    vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[0].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[0].indices.size(), 1, 0, 0, 0);
+
+    // Object
+    vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.shadow, 0, NULL);
+    vkCmdBindVertexBuffers(data->offScreenCmdBuffer, /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->geometries[2].vertexBuffer.buffer, offsets);
+    vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[2].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[2].indices.size(), 1, 0, 0, 0);
+
+    vkCmdEndRenderPass(data->offScreenCmdBuffer);
+
+    // Pass 2: Deferred calculations ->
+
     clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
     clearValues[1].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
     clearValues[2].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
@@ -321,33 +379,30 @@ namespace Reignite {
     clearValues[4].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
     clearValues[5].depthStencil = { 1.0f, 0 };
 
-    VkRenderPassBeginInfo renderPassBeginInfo = vk::initializers::RenderPassBeginInfo();
-    renderPassBeginInfo.renderPass = data->offScreenFrameBuf.renderPass;
-    renderPassBeginInfo.framebuffer = data->offScreenFrameBuf.frameBuffer;
-    renderPassBeginInfo.renderArea.extent.width = data->offScreenFrameBuf.width;
-    renderPassBeginInfo.renderArea.extent.height = data->offScreenFrameBuf.height;
+    renderPassBeginInfo.renderPass = data->defFramebuffers.deferred->renderPass;
+    renderPassBeginInfo.framebuffer = data->defFramebuffers.deferred->framebuffer;
+    renderPassBeginInfo.renderArea.extent.width = data->defFramebuffers.deferred->width;
+    renderPassBeginInfo.renderArea.extent.height = data->defFramebuffers.deferred->height;
     renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
     renderPassBeginInfo.pClearValues = clearValues.data();
 
-    VK_CHECK(vkBeginCommandBuffer(data->offScreenCmdBuffer, &cmdBufferInfo));
-
     vkCmdBeginRenderPass(data->offScreenCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    VkViewport viewport = vk::initializers::Viewport(
-      (float)data->offScreenFrameBuf.width, (float)data->offScreenFrameBuf.height, 0.0f, 1.0f);
+    viewport = vk::initializers::Viewport(
+      (float)data->defFramebuffers.deferred->width, (float)data->defFramebuffers.deferred->height, 0.0f, 1.0f);
     vkCmdSetViewport(data->offScreenCmdBuffer, 0, 1, &viewport);
 
-    VkRect2D scissor = vk::initializers::Rect2D(
-      data->offScreenFrameBuf.width, data->offScreenFrameBuf.height, 0, 0);
+    scissor = vk::initializers::Rect2D(
+      data->defFramebuffers.deferred->width, data->defFramebuffers.deferred->height, 0, 0);
     vkCmdSetScissor(data->offScreenCmdBuffer, 0, 1, &scissor);
 
-    VkDeviceSize offsets[1] = { 0 };
+    VkDeviceSize offsets2[1] = { 0 };
 
     // Skybox
     if (data->display_skybox) {
 
       vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.skybox, 0, 1, &data->descriptorSets.skybox, 0, NULL);
-      vkCmdBindVertexBuffers(data->offScreenCmdBuffer, 0, 1, &data->geometries[1].vertexBuffer.buffer, offsets);
+      vkCmdBindVertexBuffers(data->offScreenCmdBuffer, 0, 1, &data->geometries[1].vertexBuffer.buffer, offsets2);
       vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[1].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
       vkCmdBindPipeline(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.skybox);
       vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[1].indices.size(), 1, 0, 0, 0);
@@ -357,13 +412,13 @@ namespace Reignite {
 
     // Background
     vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.floor, 0, NULL);
-    vkCmdBindVertexBuffers(data->offScreenCmdBuffer, 0, 1, &data->geometries[0].vertexBuffer.buffer, offsets);
+    vkCmdBindVertexBuffers(data->offScreenCmdBuffer, 0, 1, &data->geometries[0].vertexBuffer.buffer, offsets2);
     vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[0].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[0].indices.size(), 1, 0, 0, 0);
 
     // Object
     vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.model, 0, NULL);
-    vkCmdBindVertexBuffers(data->offScreenCmdBuffer, /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->geometries[2].vertexBuffer.buffer, offsets);
+    vkCmdBindVertexBuffers(data->offScreenCmdBuffer, /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->geometries[2].vertexBuffer.buffer, offsets2);
     vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[2].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[2].indices.size(), 1, 0, 0, 0);
 
@@ -377,7 +432,7 @@ namespace Reignite {
     VkCommandBufferBeginInfo cmdBufferInfo = vk::initializers::CommandBufferBeginInfo();
 
     VkClearValue clearValues[2];
-    clearValues[0].color = { { 0.2f, 0.2f, 0.2f, 1.0f } };
+    clearValues[0].color = { { 0.0f, 0.0f, 0.2f, 1.0f } };
     clearValues[1].depthStencil = { 1.0f, 0 };
 
     VkRenderPassBeginInfo renderPassBeginInfo = vk::initializers::RenderPassBeginInfo();
@@ -420,11 +475,18 @@ namespace Reignite {
         vkCmdSetViewport(data->commandBuffers[i], 0, 1, &viewport);
       }
 
+      // Final result on a full screen quad
       vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.deferred, 0, 1, &data->descriptorSet, 0, NULL);
       vkCmdBindPipeline(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.deferred);
       //vkCmdBindVertexBuffers(data->commandBuffers[i], /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->tmp_vertices.buffer, offsets);
       //vkCmdBindIndexBuffer(data->commandBuffers[i], data->tmp_indices.buffer, 0, VK_INDEX_TYPE_UINT32);
       vkCmdDraw(data->commandBuffers[i], 6, 1, 0, 0);
+
+      if (data->shadows_debug_display) {
+
+        vkCmdBindPipeline(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.debug);
+        vkCmdDrawIndexed(data->commandBuffers[i], 6, 3 /*Lighs*/, 0, 0, 0);
+      }
 
       // Draw UI call should be here
       {
@@ -448,6 +510,7 @@ namespace Reignite {
 
     updateUniformBufferDeferredMatrices();
     updateUniformBufferDeferredLights();
+    updateUniformBuffersScreen();
 
     // Imgui setup
     {
@@ -566,8 +629,6 @@ namespace Reignite {
 
   void RenderContext::updateUniformBuffersScreen() {
 
-    setRenderInfo();
-
     if(data->deferred_debug_display) {
 
       data->uboVS.projection = glm::ortho(0.0f, 2.0f, 0.0f, 2.0f, -1.0f, 1.0f);
@@ -594,15 +655,9 @@ namespace Reignite {
 
   void RenderContext::updateUniformBufferDeferredMatrices() {
 
-    static auto startTime = std::chrono::high_resolution_clock::now();
-
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float timer = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-
-    data->uboOffscreenVS.projection = state->compSystem->projection();
-    data->uboOffscreenVS.view = state->compSystem->view();
-    data->uboOffscreenVS.model = glm::mat4(1.0f);
+    data->uboOffscreenVS.projection = state->compSystem->camera()->projection;
+    data->uboOffscreenVS.view = state->compSystem->camera()->view;
+    data->uboOffscreenVS.model = state->compSystem->transform()->global[0]; //glm::translate(glm::mat4(1.0f), vec3f(0.0f, 2.0f, 0.0f));
 
     memcpy(data->uniformBuffers.vsOffscreen.mapped, &data->uboOffscreenVS, sizeof(data->uboOffscreenVS));
   }
@@ -614,48 +669,35 @@ namespace Reignite {
     auto currentTime = std::chrono::high_resolution_clock::now();
     float timer = 0.1f * std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-    // White
-    data->uboFragmentLights.lights[0].position = glm::vec4(0.0f, 4.0f, 0.0f, 0.0f);
-    data->uboFragmentLights.lights[0].color = glm::vec3(1.0f);
-    data->uboFragmentLights.lights[0].radius = 35.0f;
-    // Red
-    data->uboFragmentLights.lights[1].position = glm::vec4(6.0f, 0.0f, 0.0f, 0.0f);
-    data->uboFragmentLights.lights[1].color = glm::vec3(1.0f, 0.0f, 0.0f); //glm::vec3(1.0f, 0.0f, 0.0f);
-    data->uboFragmentLights.lights[1].radius = 35.0f;
-    // Blue
-    data->uboFragmentLights.lights[2].position = glm::vec4(2.0f, 1.0f, 0.0f, 0.0f);
-    data->uboFragmentLights.lights[2].color = glm::vec3(1.5f); //glm::vec3(0.0f, 0.0f, 2.5f);
-    data->uboFragmentLights.lights[2].radius = 5.0f;
-    // Yellow
-    data->uboFragmentLights.lights[3].position = glm::vec4(0.0f, 0.9f, 0.5f, 0.0f);
-    data->uboFragmentLights.lights[3].color = glm::vec3(1.5f); //glm::vec3(1.0f, 1.0f, 0.0f);
-    data->uboFragmentLights.lights[3].radius = 2.0f;
-    // Green
-    data->uboFragmentLights.lights[4].position = glm::vec4(0.0f, 0.5f, 0.0f, 0.0f);
-    data->uboFragmentLights.lights[4].color = glm::vec3(1.5f); //glm::vec3(0.0f, 1.0f, 0.2f);
-    data->uboFragmentLights.lights[4].radius = 5.0f;
-    // Yellow
-    data->uboFragmentLights.lights[5].position = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
-    data->uboFragmentLights.lights[5].color = glm::vec3(1.5f); //glm::vec3(1.0f, 0.7f, 0.3f);
-    data->uboFragmentLights.lights[5].radius = 25.0f;
+    /*data->uboFragmentLights.lights[0].position.x = -sin(glm::radians(360.0f * timer)) * 5.0f;
+    data->uboFragmentLights.lights[0].position.z = -cos(glm::radians(360.0f * timer)) * 5.0f;
 
-    data->uboFragmentLights.lights[0].position.x = sin(glm::radians(360.0f * timer)) * 5.0f;
-    data->uboFragmentLights.lights[0].position.z = cos(glm::radians(360.0f * timer)) * 5.0f;
+    data->uboFragmentLights.lights[1].position.x = -4.0f + sin(glm::radians(360.0f * timer) + 45.0f) * 2.0f;
+    data->uboFragmentLights.lights[1].position.z = 0.0f + cos(glm::radians(360.0f * timer) + 45.0f) * 2.0f;*/
 
-    data->uboFragmentLights.lights[1].position.x = 4.0f + sin(glm::radians(360.0f * timer) + 45.0f) * 2.0f;
-    //data->uboFragmentLights.lights[1].position.z = 0.0f + cos(glm::radians(360.0f * timer) + 45.0f) * 2.0f;
-
-    data->uboFragmentLights.lights[2].position.x = 4.0f + sin(glm::radians(360.0f * timer)) * 2.0f;
+    data->uboFragmentLights.lights[2].position.x = 0.0f + sin(glm::radians(360.0f * timer)) * 2.0f;
     data->uboFragmentLights.lights[2].position.z = 0.0f + cos(glm::radians(360.0f * timer)) * 2.0f;
 
-    data->uboFragmentLights.lights[4].position.x = 0.0f + sin(glm::radians(360.0f * timer + 90.0f)) * 5.0f;
-    data->uboFragmentLights.lights[4].position.z = 0.0f - cos(glm::radians(360.0f * timer + 45.0f)) * 5.0f;
+    float zNear = 0.1f;
+    float zFar = 64.0f;
+    float lightFOV = 100.0f;
 
-    data->uboFragmentLights.lights[5].position.x = 0.0f + sin(glm::radians(-360.0f * timer + 135.0f)) * 10.0f;
-    data->uboFragmentLights.lights[5].position.z = 0.0f - cos(glm::radians(-360.0f * timer - 45.0f)) * 10.0f;
+    for (u32 i = 0; i < 3; ++i) {
+
+      glm::mat4 shadowProj = glm::perspective(glm::radians(lightFOV), 1.0f, zNear, zFar);
+      glm::mat4 shadowView = glm::lookAt(glm::vec3(data->uboFragmentLights.lights[i].position), glm::vec3(data->uboFragmentLights.lights[i].target), glm::vec3(0.0f, 1.0f, 0.0f));
+      glm::mat4 shadowModel = glm::mat4(1.0f);
+
+      data->uboShadowGS.mvp[i] = shadowProj * shadowView * shadowModel;
+      data->uboFragmentLights.lights[i].view = data->uboShadowGS.mvp[i];
+    }
+
+    memcpy(data->uboShadowGS.instancePos, data->uboOffscreenVS.instancePos, sizeof(data->uboOffscreenVS.instancePos));
+
+    memcpy(data->uniformBuffers.gsShadows.mapped, &data->uboShadowGS, sizeof(data->uboShadowGS));
 
     // Current view position
-    data->uboFragmentLights.viewPos = glm::vec4(state->compSystem->viewPosition(), 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
+    data->uboFragmentLights.viewPos = glm::vec4(state->compSystem->camera()->position, 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
 
     memcpy(data->uniformBuffers.fsLights.mapped, &data->uboFragmentLights, sizeof(data->uboFragmentLights));
 
@@ -673,18 +715,18 @@ namespace Reignite {
     data->textures.model.normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.model.roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.model.metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-/*
+
     data->textures.floor.colorMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_albedo.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.floor.normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.floor.roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.floor.metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-    */
     
+    /*
     data->textures.floor.colorMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_albedo.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.floor.normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.floor.roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->textures.floor.metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-    
+    */
 
     std::string filename;
     VkFormat format;
@@ -732,6 +774,13 @@ namespace Reignite {
     vkGetPhysicalDeviceProperties(data->physicalDevice, &data->deviceProperties);
     vkGetPhysicalDeviceFeatures(data->physicalDevice, &data->deviceFeatures);
     vkGetPhysicalDeviceMemoryProperties(data->physicalDevice, &data->deviceMemoryProperties);
+    
+    if (data->deviceFeatures.geometryShader) {
+      data->enabledFeatures.geometryShader = VK_TRUE;
+    }
+    else {
+      assert(!"GPU does not support geometry shaders");
+    }
 
     if (data->deviceFeatures.samplerAnisotropy) {
       data->enabledFeatures.samplerAnisotropy = VK_TRUE;
@@ -970,92 +1019,73 @@ namespace Reignite {
       data->vertices.inputState.pVertexAttributeDescriptions = data->vertices.attributeDescriptions.data();
     }
 
-    // Prepare Offscreen Framebuffer (G-Buffer)
+    // Setup deferred framebuffer (G-Buffer)
     {
-      data->offScreenFrameBuf.width = 2048;
-      data->offScreenFrameBuf.height = 2048;
+      data->defFramebuffers.deferred = new vk::Framebuffer(data->vulkanState);
 
-      CreateFramebufferAttachment(data->device, data->physicalDevice, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &data->offScreenFrameBuf.position, 
-        data->offScreenFrameBuf.width, data->offScreenFrameBuf.height);
+      data->defFramebuffers.deferred->width = 2048;
+      data->defFramebuffers.deferred->height = 2048;
 
-      CreateFramebufferAttachment(data->device, data->physicalDevice, VK_FORMAT_R16G16B16A16_SFLOAT,
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &data->offScreenFrameBuf.normal, 
-        data->offScreenFrameBuf.width, data->offScreenFrameBuf.height);
+      vk::AttachmentCreateInfo attachmentCreateInfo = {};
+      attachmentCreateInfo.width = 2048;
+      attachmentCreateInfo.height = 2048;
+      attachmentCreateInfo.layerCount = 1;
+      attachmentCreateInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
-      CreateFramebufferAttachment(data->device, data->physicalDevice, VK_FORMAT_R8G8B8A8_UNORM,
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &data->offScreenFrameBuf.albedo, 
-        data->offScreenFrameBuf.width, data->offScreenFrameBuf.height);
+      attachmentCreateInfo.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+      data->defFramebuffers.deferred->addAttachment(attachmentCreateInfo);
 
-      CreateFramebufferAttachment(data->device, data->physicalDevice, VK_FORMAT_R8G8B8A8_UNORM,
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &data->offScreenFrameBuf.roughness,
-        data->offScreenFrameBuf.width, data->offScreenFrameBuf.height);
+      attachmentCreateInfo.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+      data->defFramebuffers.deferred->addAttachment(attachmentCreateInfo);
 
-      CreateFramebufferAttachment(data->device, data->physicalDevice, VK_FORMAT_R8G8B8A8_UNORM,
-        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &data->offScreenFrameBuf.metallic,
-        data->offScreenFrameBuf.width, data->offScreenFrameBuf.height);
+      attachmentCreateInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+      data->defFramebuffers.deferred->addAttachment(attachmentCreateInfo);
+
+      attachmentCreateInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+      data->defFramebuffers.deferred->addAttachment(attachmentCreateInfo);
+
+      attachmentCreateInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+      data->defFramebuffers.deferred->addAttachment(attachmentCreateInfo);
 
       VkFormat attDepthFormat;
       VkBool32 validDepthFormat = vk::tools::GetSupportedDepthFormat(data->physicalDevice, &attDepthFormat);
       assert(validDepthFormat);
       
-      CreateFramebufferAttachment(data->device, data->physicalDevice, VK_FORMAT_D32_SFLOAT_S8_UINT,
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, &data->offScreenFrameBuf.depth,
-        data->offScreenFrameBuf.width, data->offScreenFrameBuf.height);
+      attachmentCreateInfo.format = attDepthFormat;
+      attachmentCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      data->defFramebuffers.deferred->addAttachment(attachmentCreateInfo);
 
-      std::vector<VkAttachmentDescription> attachmentDescs(6);
-      for (u32 i = 0; i < 6; ++i) {
+      VK_CHECK(data->defFramebuffers.deferred->createSampler(
+        VK_FILTER_NEAREST, VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE));
 
-        attachmentDescs[i].samples = VK_SAMPLE_COUNT_1_BIT;
-        attachmentDescs[i].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        attachmentDescs[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        attachmentDescs[i].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        attachmentDescs[i].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        if (i == 5)
-        {
-          attachmentDescs[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-          attachmentDescs[i].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        }
-        else
-        {
-          attachmentDescs[i].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-          attachmentDescs[i].finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        }
-      }
+      VK_CHECK(data->defFramebuffers.deferred->createRenderPass());
+    }
 
-      attachmentDescs[0].format = data->offScreenFrameBuf.position.format;
-      attachmentDescs[1].format = data->offScreenFrameBuf.normal.format;
-      attachmentDescs[2].format = data->offScreenFrameBuf.albedo.format;
-      attachmentDescs[3].format = data->offScreenFrameBuf.roughness.format;
-      attachmentDescs[4].format = data->offScreenFrameBuf.metallic.format;
-      attachmentDescs[5].format = data->offScreenFrameBuf.depth.format;
+    // setup shadow framebuffer
+    {
+      data->defFramebuffers.shadow = new vk::Framebuffer(data->vulkanState);
 
-      std::vector<VkAttachmentReference> colorReferences = {};
-      colorReferences.push_back({ 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
-      colorReferences.push_back({ 1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
-      colorReferences.push_back({ 2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
-      colorReferences.push_back({ 3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
-      colorReferences.push_back({ 4, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL });
+      data->defFramebuffers.shadow->width = 2048;
+      data->defFramebuffers.shadow->height = 2048;
 
-      std::vector<VkAttachmentReference> defDepthReference = {};
-      defDepthReference.push_back({ 5, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL });
+      vk::AttachmentCreateInfo attachmentCreateInfo = {};
+      attachmentCreateInfo.format = VK_FORMAT_D32_SFLOAT_S8_UINT;
+      attachmentCreateInfo.width = 2048;
+      attachmentCreateInfo.height = 2048;
+      attachmentCreateInfo.layerCount = 3; // Lights
+      attachmentCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+      data->defFramebuffers.shadow->addAttachment(attachmentCreateInfo);
 
-      VK_CHECK(CreateRenderPass(data->device, data->offScreenFrameBuf.renderPass,
-        colorReferences, defDepthReference, attachmentDescs));
+      VK_CHECK(data->defFramebuffers.shadow->createSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE));
 
-      std::vector<VkImageView> attachments(6);
-      attachments[0] = data->offScreenFrameBuf.position.view;
-      attachments[1] = data->offScreenFrameBuf.normal.view;
-      attachments[2] = data->offScreenFrameBuf.albedo.view;
-      attachments[3] = data->offScreenFrameBuf.roughness.view;
-      attachments[4] = data->offScreenFrameBuf.metallic.view;
-      attachments[5] = data->offScreenFrameBuf.depth.view;
+      VK_CHECK(data->defFramebuffers.shadow->createRenderPass());
+    }
 
-      VK_CHECK(CreateFramebuffer(data->device, data->offScreenFrameBuf.frameBuffer,
-        data->offScreenFrameBuf.renderPass, data->offScreenFrameBuf.width,
-        data->offScreenFrameBuf.height, attachments));
-
-      VK_CHECK(CreateSampler(data->device, data->colorSampler));
+    // init lights // Done as a component in the future
+    {
+      data->uboFragmentLights.lights[0] = { glm::vec4(-14.0f, 0.5f, 15.0f, 1.0f),  glm::vec4(-2.0f, 0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.5f, 0.5f, 0.0f) };
+      data->uboFragmentLights.lights[1] = { glm::vec4(14.0f, 4.0f, 12.0f, 1.0f),   glm::vec4(2.0f, 0.0f, 0.0f, 0.0f),  glm::vec4(0.0f, 0.0f, 1.0f, 0.0f) };
+      data->uboFragmentLights.lights[2] = { glm::vec4(0.0f, 10.0f, 4.0f, 1.0f),    glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f) };
     }
 
     // Prepare UniformBuffers
@@ -1074,16 +1104,24 @@ namespace Reignite {
 
       VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        sizeof(data->uboShadowGS), &data->uniformBuffers.gsShadows));
+
+      VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         sizeof(data->skyboxUboVS), &data->uniformBuffers.skybox));
 
       VK_CHECK(data->uniformBuffers.vsFullScreen.map());
       VK_CHECK(data->uniformBuffers.vsOffscreen.map());
       VK_CHECK(data->uniformBuffers.fsLights.map());
+      VK_CHECK(data->uniformBuffers.gsShadows.map());
       VK_CHECK(data->uniformBuffers.skybox.map());
 
       data->uboOffscreenVS.instancePos[0] = glm::vec4(0.0f);
       data->uboOffscreenVS.instancePos[1] = glm::vec4(-4.0f, 0.0, -4.0f, 0.0f);
       data->uboOffscreenVS.instancePos[2] = glm::vec4(4.0f, 0.0, -4.0f, 0.0f);
+
+      data->uboOffscreenVS.instancePos[1] = glm::vec4(-7.0f, 0.0, -4.0f, 0.0f);
+      data->uboOffscreenVS.instancePos[2] = glm::vec4(4.0f, 0.0, -6.0f, 0.0f);
 
       updateUniformBuffersScreen();
       updateUniformBufferDeferredMatrices();
@@ -1097,7 +1135,7 @@ namespace Reignite {
         // Binding 0 : Vertex shader uniform buffer
         vk::initializers::DescriptorSetLayoutBinding(
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          VK_SHADER_STAGE_VERTEX_BIT,
+          VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT,
           0),
         // Binding 1 : Position texture target / Scene colormap
         vk::initializers::DescriptorSetLayoutBinding(
@@ -1129,6 +1167,11 @@ namespace Reignite {
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           VK_SHADER_STAGE_FRAGMENT_BIT,
           6),
+        // Binding 7 : Shadow map
+        vk::initializers::DescriptorSetLayoutBinding(
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          VK_SHADER_STAGE_FRAGMENT_BIT,
+          7),
       };
 
       VkDescriptorSetLayoutCreateInfo descriptorLayout =
@@ -1202,7 +1245,7 @@ namespace Reignite {
         vk::initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE)
       };
 
-      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelineLayouts.offscreen, data->offScreenFrameBuf.renderPass,
+      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelineLayouts.offscreen, data->defFramebuffers.deferred->renderPass,
         "mrt", data->pipelineCache, data->pipelines.offscreen, data->vertices.inputState, blendAttachmentStates, depthStencilState,
         VK_FRONT_FACE_CLOCKWISE));
 
@@ -1224,16 +1267,96 @@ namespace Reignite {
       vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputAttributes.size());
       vertexInputState.pVertexAttributeDescriptions = vertexInputAttributes.data();
 
-      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelineLayouts.skybox, data->offScreenFrameBuf.renderPass,
+      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelineLayouts.skybox, data->defFramebuffers.deferred->renderPass,
         "skybox", data->pipelineCache, data->pipelines.skybox, vertexInputState, blendAttachmentStates, depthStencilState,
         VK_FRONT_FACE_COUNTER_CLOCKWISE));
+
+      // Shadow mapping
+      VkPipelineInputAssemblyStateCreateInfo inputAssemblyState =
+        vk::initializers::PipelineInputAssemblyStateCreateInfo(
+          VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+          0,
+          VK_FALSE);
+
+      VkPipelineRasterizationStateCreateInfo rasterizationState =
+        vk::initializers::PipelineRasterizationStateCreateInfo(
+          VK_POLYGON_MODE_FILL,
+          VK_CULL_MODE_BACK_BIT,
+          VK_FRONT_FACE_CLOCKWISE,
+          0);
+
+      VkPipelineColorBlendStateCreateInfo colorBlendState =
+        vk::initializers::PipelineColorBlendStateCreateInfo(blendAttachmentState);
+
+      depthStencilState =
+        vk::initializers::PipelineDepthStencilStateCreateInfo(
+          VK_TRUE,
+          VK_TRUE,
+          VK_COMPARE_OP_LESS_OR_EQUAL);
+
+      VkPipelineViewportStateCreateInfo viewportState =
+        vk::initializers::PipelineViewportStateCreateInfo(1, 1, 0);
+
+      VkPipelineMultisampleStateCreateInfo multisampleState =
+        vk::initializers::PipelineMultisampleStateCreateInfo(
+          VK_SAMPLE_COUNT_1_BIT,
+          0);
+
+      std::vector<VkDynamicState> dynamicStateEnables = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR
+      };
+      VkPipelineDynamicStateCreateInfo dynamicState =
+        vk::initializers::PipelineDynamicStateCreateInfo(
+          dynamicStateEnables.data(),
+          static_cast<uint32_t>(dynamicStateEnables.size()),
+          0);
+
+      vk::initializers::PipelineVertexInputStateCreateInfo();
+
+      std::array<VkPipelineShaderStageCreateInfo, 2> shadowStages;
+      shadowStages[0] = loadShader(data->device, Reignite::Tools::GetAssetPath() + "shaders/deferred_shadows.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+      shadowStages[1] = loadShader(data->device, Reignite::Tools::GetAssetPath() + "shaders/deferred_shadows.geom.spv", VK_SHADER_STAGE_GEOMETRY_BIT);
+
+      VkGraphicsPipelineCreateInfo pipelineCreateInfo =
+        vk::initializers::GraphicsPipelineCreateInfo(
+          data->pipelineLayouts.deferred,
+          data->renderPass,
+          0);
+
+      pipelineCreateInfo.pVertexInputState = &data->vertices.inputState;
+      pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
+      pipelineCreateInfo.pRasterizationState = &rasterizationState;
+      pipelineCreateInfo.pColorBlendState = &colorBlendState;
+      pipelineCreateInfo.pMultisampleState = &multisampleState;
+      pipelineCreateInfo.pViewportState = &viewportState;
+      pipelineCreateInfo.pDepthStencilState = &depthStencilState;
+      pipelineCreateInfo.pDynamicState = &dynamicState;
+      pipelineCreateInfo.stageCount = static_cast<uint32_t>(shadowStages.size());
+      pipelineCreateInfo.pStages = shadowStages.data();
+
+      // changes to shadow pipeline
+      colorBlendState.attachmentCount = 0;
+      colorBlendState.pAttachments = nullptr;
+
+      rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
+      depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+
+      rasterizationState.depthBiasEnable = VK_TRUE;
+
+      dynamicStateEnables.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
+      dynamicState = vk::initializers::PipelineDynamicStateCreateInfo(
+        dynamicStateEnables.data(), static_cast<u32>(dynamicStateEnables.size()), 0);
+
+      pipelineCreateInfo.renderPass = data->defFramebuffers.shadow->renderPass;
+      VK_CHECK(vkCreateGraphicsPipelines(data->device, data->pipelineCache, 1, &pipelineCreateInfo, nullptr, &data->pipelines.shadowPass));
     }
 
     // Setup DescriptorPool
     {
       std::vector<VkDescriptorPoolSize> poolSizes = {
-        vk::initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 8),
-        vk::initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 9)
+        vk::initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 12),
+        vk::initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 16)
       };
 
       VK_CHECK(CreateDescriptorPool(data->device, data->descriptorPool, poolSizes));
@@ -1246,24 +1369,28 @@ namespace Reignite {
           data->descriptorPool, &data->descriptorSetLayout, 1);
 
       VkDescriptorImageInfo texDescriptorPosition =
-        vk::initializers::DescriptorImageInfo(data->colorSampler,
-          data->offScreenFrameBuf.position.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        vk::initializers::DescriptorImageInfo(data->defFramebuffers.deferred->sampler,
+          data->defFramebuffers.deferred->attachments[0].view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
       VkDescriptorImageInfo texDescriptorNormal =
-        vk::initializers::DescriptorImageInfo(data->colorSampler,
-          data->offScreenFrameBuf.normal.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        vk::initializers::DescriptorImageInfo(data->defFramebuffers.deferred->sampler,
+          data->defFramebuffers.deferred->attachments[1].view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
       VkDescriptorImageInfo texDescriptorAlbedo =
-        vk::initializers::DescriptorImageInfo(data->colorSampler,
-          data->offScreenFrameBuf.albedo.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        vk::initializers::DescriptorImageInfo(data->defFramebuffers.deferred->sampler,
+          data->defFramebuffers.deferred->attachments[2].view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
       VkDescriptorImageInfo texDescriptorRoughness =
-        vk::initializers::DescriptorImageInfo(data->colorSampler,
-          data->offScreenFrameBuf.roughness.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        vk::initializers::DescriptorImageInfo(data->defFramebuffers.deferred->sampler,
+          data->defFramebuffers.deferred->attachments[3].view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
       VkDescriptorImageInfo texDescriptorMetallic =
-        vk::initializers::DescriptorImageInfo(data->colorSampler,
-          data->offScreenFrameBuf.metallic.view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        vk::initializers::DescriptorImageInfo(data->defFramebuffers.deferred->sampler,
+          data->defFramebuffers.deferred->attachments[4].view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+      VkDescriptorImageInfo texDescriptorShadowMap =
+        vk::initializers::DescriptorImageInfo(data->defFramebuffers.shadow->sampler,
+          data->defFramebuffers.shadow->attachments[0].view, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
 
       VK_CHECK(vkAllocateDescriptorSets(data->device, &allocInfo, &data->descriptorSet));
 
@@ -1289,6 +1416,9 @@ namespace Reignite {
         // Binding 6 : Fragment shader uniform buffer
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 6, &data->uniformBuffers.fsLights.descriptor),
+        // Binding 7 : Shadow map
+        vk::initializers::WriteDescriptorSet(data->descriptorSet,
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 7, &texDescriptorShadowMap),
       };
 
       vkUpdateDescriptorSets(data->device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
@@ -1308,10 +1438,10 @@ namespace Reignite {
         // Binding 2: Normal map
         vk::initializers::WriteDescriptorSet(data->descriptorSets.model,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &data->textures.model.normalMap.descriptor),
-
+        // Binding 3: Roughness map
         vk::initializers::WriteDescriptorSet(data->descriptorSets.model,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &data->textures.model.roughness.descriptor),
-
+        // Binding 4: Metallic map
         vk::initializers::WriteDescriptorSet(data->descriptorSets.model,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &data->textures.model.metallic.descriptor)
       };
@@ -1342,6 +1472,14 @@ namespace Reignite {
 
       vkUpdateDescriptorSets(data->device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
     
+      // Shadow mapping descriptor set
+      VK_CHECK(vkAllocateDescriptorSets(data->device, &allocInfo, &data->descriptorSets.shadow));
+      writeDescriptorSets = {
+        vk::initializers::WriteDescriptorSet(data->descriptorSets.shadow,
+          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &data->uniformBuffers.gsShadows.descriptor),
+      };
+      vkUpdateDescriptorSets(data->device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
+
       // Sky box descriptor set
       allocInfo = vk::initializers::DescriptorSetAllocateInfo(
         data->descriptorPool, &data->skyboxDescriptorSetLayout, 1);
@@ -1395,9 +1533,6 @@ namespace Reignite {
     //DestroyImage(data->device, data->depthImage);
     //destroySwapchain(data->device, data->swapchain);
 
-    for (size_t i = 0; i < data->materials.size(); ++i)
-      DestroyMaterial(data->materials[i]);
-
     vkDestroyDescriptorPool(data->device, data->descriptorPool, nullptr);
 
     vkDestroyDescriptorSetLayout(data->device, data->descriptorSetLayout, nullptr);
@@ -1405,9 +1540,6 @@ namespace Reignite {
     //vkDestroySampler(data->device, data->textureSampler, nullptr);
 
     //DestroyImage(data->device, data->texture);
-
-    for (u32 i = 0; i < data->geometries.size(); ++i)
-      DestroyGeometry(data->geometries[i]);
 
     //vkDestroyPipeline(data->device, data->trianglePipeline, 0);
     //vkDestroyPipelineLayout(data->device, data->triangleLayout, 0);

@@ -7,8 +7,7 @@ layout (location = 2) in vec2 inUV;
 layout (location = 3) in vec3 inColor;
 layout (location = 4) in vec3 inTangent;
 
-layout (binding = 0) uniform UBO 
-{
+layout (binding = 0) uniform UBO {
 	mat4 projection;
 	mat4 model;
 	mat4 view;
@@ -21,13 +20,12 @@ layout (location = 2) out vec3 outColor;
 layout (location = 3) out vec3 outWorldPos;
 layout (location = 4) out vec3 outTangent;
 
-out gl_PerVertex
-{
+out gl_PerVertex {
 	vec4 gl_Position;
 };
 
-void main() 
-{
+void main() {
+
 	vec4 tmpPos = inPos + ubo.instancePos[gl_InstanceIndex];
 
 	gl_Position = ubo.projection * ubo.view * ubo.model * tmpPos;

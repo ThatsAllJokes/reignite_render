@@ -6,19 +6,29 @@ layout (binding = 3) uniform sampler2D samplerAlbedo;
 layout (binding = 4) uniform sampler2D samplerRoughness;
 layout (binding = 5) uniform sampler2D samplerMetallic;
 
+layout (binding = 7) uniform sampler2DArray samplerShadowMap;
+
 layout (location = 0) in vec2 inUV;
 
 layout (location = 0) out vec4 outFragcolor;
 
+#define LIGHT_COUNT 3
+#define SHADOW_FACTOR 0.25
+#define AMBIENT_LIGHT 0.6
+#define USE_PCF
+
 struct Light {
 	vec4 position;
-	vec3 color;
+  vec4 target;
+	vec4 color;
 	float radius;
+  mat4 view;
 };
 
 layout (binding = 6) uniform UBO {
-	Light lights[6];
+	Light lights[3];
 	vec4 viewPos;
+  int useShadows;
 } ubo;
 
 struct PushcConstants {
@@ -30,6 +40,48 @@ struct PushcConstants {
 } material;
 
 const float PI = 3.14159265359;
+
+
+float textureProj(vec4 P, float layer, vec2 offset) {
+
+	float shadow = 1.0;
+	vec4 shadowCoord = P / P.w;
+	shadowCoord.st = shadowCoord.st * 0.5 + 0.5;
+	
+	if (shadowCoord.z > -1.0 && shadowCoord.z < 1.0) {
+
+		float dist = texture(samplerShadowMap, vec3(shadowCoord.st + offset, layer)).r;
+		if (shadowCoord.w > 0.0 && dist < shadowCoord.z) {
+
+			shadow = SHADOW_FACTOR;
+		}
+	}
+
+	return shadow;
+}
+
+float filterPCF(vec4 sc, float layer) {
+
+	ivec2 texDim = textureSize(samplerShadowMap, 0).xy;
+	float scale = 1.5;
+	float dx = scale * 1.0 / float(texDim.x);
+	float dy = scale * 1.0 / float(texDim.y);
+
+	float shadowFactor = 0.0;
+	int count = 0;
+	int range = 1;
+	
+	for (int x = -range; x <= range; x++) {
+
+		for (int y = -range; y <= range; y++)	{
+
+			shadowFactor += textureProj(sc, layer, vec2(dx*x, dy*y));
+			count++;
+		}
+	}
+
+	return shadowFactor / count;
+}
 
 vec3 albedo;
 vec3 materialcolor() {
@@ -84,7 +136,7 @@ vec3 BRDF(vec3 L, vec3 V, vec3 N, float metallic, float roughness, int it) { // 
   vec3 F = Fresnel_Schlick(dotNV, mmetallic);              // F = Fresnel factor (Reflectance depending on angle of incidence)
 
   vec3 spec = D * G * F / (4.0 * dotNL * dotNV);
-	color += spec * dotNL * ubo.lights[it].color;
+	color += spec * dotNL * ubo.lights[it].color.xyz;
 
   return color;
 }
@@ -105,21 +157,24 @@ void main() {
 	albedo = texture(samplerAlbedo, inUV).rgb * vec3(material.r, material.g, material.b);
   float roughness = texture(samplerRoughness, inUV).r;
   float metallic = texture(samplerMetallic, inUV).r;
-	
-	#define lightCount 6
+
+	vec3 fragcolor = albedo.rgb * AMBIENT_LIGHT;
 	
 	vec3 N = normalize(normal);
 	vec3 V = normalize(-ubo.viewPos.xyz); 	// Viewer to fragment
 
-	vec3 fragcolor = vec3(0.0);
-	for(int i = 0; i < lightCount; ++i) {
+  float lightCosInnerAngle = cos(radians(15.0));
+	float lightCosOuterAngle = cos(radians(25.0));
+	float lightRange = 100.0;
+
+	for(int i = 0; i < LIGHT_COUNT; ++i) {
 
 		vec3 L = normalize(ubo.lights[i].position.xyz - fragPos); // Vector to light
     vec3 H = normalize (V + L);
 
     float dist = length(ubo.lights[i].position.xyz - fragPos);
     float attenuation = 1.0 / (dist * dist);
-    vec3 radiance = ubo.lights[i].color * attenuation;
+    vec3 radiance = ubo.lights[i].color.xyz * attenuation;
 
 	  float dotNL = max(dot(N, L), 0.0);
 	  float dotNH = max(dot(N, H), 0.0);
@@ -140,11 +195,26 @@ void main() {
 	  fragcolor += (kD * albedo / PI + spec) * dotNL * radiance;
 	}
   
-  vec3 ambient = vec3(0.1 * albedo);
-  vec3 color = ambient + fragcolor;
-  
-  color = color / (color + vec3(1.0));
-  color = pow(color, vec3(1.0/2.2)); // gamma correction/HDR
+  if(ubo.useShadows > 0) {
 
-  outFragcolor = vec4(color, 1.0);	
+    for(int i = 0; i < LIGHT_COUNT; ++i) {
+      
+      vec4 shadowClip = ubo.lights[i].view * vec4(fragPos, 1.0);
+
+      float shadowFactor;
+      #ifdef USE_PCF
+        shadowFactor = filterPCF(shadowClip, i);
+      #else
+        shadowFactor = textureProj(shadowClip, i vec2(0.0));
+      #endif
+
+      fragcolor *= shadowFactor;
+    }
+  }
+
+  //vec3 color = fragcolor;
+  //color = color / (color + vec3(1.0));
+  //color = pow(color, vec3(1.0/2.2)); // gamma correction/HDR
+
+  outFragcolor = vec4(fragcolor, 1.0);	
 }

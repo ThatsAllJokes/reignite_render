@@ -11,9 +11,14 @@ namespace Reignite {
 
   struct State;
 
-  struct ComponentSystemParams {
+  struct Camera;
+  struct TransformComponents;
+  struct RenderComponents;
+  struct LightComponents; 
+  
+  struct ComponentSystemParams{
 
-    u32 max_entities = 128;
+    u32 max_entities = 40;
   };
 
   class REIGNITE_API ComponentSystem {
@@ -22,9 +27,13 @@ namespace Reignite {
     ComponentSystem(const std::shared_ptr<State> state);
     ~ComponentSystem();
 
-    vec3f viewPosition();
-    mat4f view();
-    mat4f projection();
+    void addEntity();
+    void addEntity(s32 parentId);
+
+    Camera* camera();
+    TransformComponents* transform();
+    RenderComponents* render();
+    LightComponents* light();
 
     void update();
 
@@ -32,8 +41,6 @@ namespace Reignite {
 
     void initialize(const std::shared_ptr<State> state);
     void shutdown();
-
-    std::shared_ptr<State> state;
 
     struct Data;
     Data* data;

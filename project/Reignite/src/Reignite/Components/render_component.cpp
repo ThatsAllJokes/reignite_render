@@ -1,6 +1,38 @@
 #include "render_component.h"
 
 
-void Reignite::RenderComponents::UpdateRenderComponents() {
+void Reignite::RenderComponents::init(u32 maxSize) {
+
+  used.reserve(maxSize);
+  active.reserve(maxSize);
+
+  geometry.reserve(maxSize);
+  material.reserve(maxSize);
+  texture.reserve(maxSize);
+}
+
+void Reignite::RenderComponents::clear() {
+
+  used.clear();
+  active.clear();
+
+  geometry.clear();
+  material.clear();
+  texture.clear();
+}
+
+void Reignite::RenderComponents::add() {
+
+  used.push_back(true);
+  active.push_back(true);
+
+  geometry.push_back(1);
+  material.push_back(1);
+  texture.push_back(0);
+
+  ++size;
+}
+
+void Reignite::RenderComponents::update() {
 
 }

@@ -10,7 +10,12 @@ namespace Reignite {
 
   struct RenderComponents : public BaseComponents {
   
-    void UpdateRenderComponents();
+    void init(u32 maxSize);
+    void clear();
+
+    void add();
+
+    void update();
 
     std::vector<s16> geometry;
     std::vector<s16> material;

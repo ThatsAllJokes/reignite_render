@@ -3,34 +3,12 @@
 #include <gtc/quaternion.hpp>
 #include <gtc/matrix_transform.hpp>
 
-#include "../window.h"
-#include "../component_system.h"
-#include "../render_context.h"
+#include "../state.h"
 
 #include "transform_component.h"
 #include "render_component.h"
 #include "light_component.h"
 
-
-namespace Reignite {
-
-  struct State {
-
-    float frameTimer;
-
-    std::shared_ptr<Window> window;
-    Input* input;
-
-    vec2f mousePos;
-    struct {
-      bool left = false;
-      bool right = false;
-      bool middle = false;
-    } mouseButtons;
-
-    std::vector<ComponentSystem> compSystem;
-  };
-}
 
 void Reignite::Camera::setInputAccess(const std::shared_ptr<State> state) {
 

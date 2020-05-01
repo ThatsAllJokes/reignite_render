@@ -10,7 +10,12 @@ namespace Reignite {
 
   struct LightComponents : public BaseComponents {
 
-    void UpdateLightComponents();
+    void init(u32 maxSize);
+    void clear();
+
+    void add(vec3f direction);
+
+    void update();
     
     enum Type {
       RI_LIGHT_TYPE_DIRECTIONAL,
@@ -18,12 +23,11 @@ namespace Reignite {
       RI_LIGHT_TYPE_SPOTLIGHT
     };
 
-    Type type = RI_LIGHT_TYPE_SPOTLIGHT;
-    vec3f position = vec3f();
-    vec3f direction = vec3f();
-    vec3f color = vec3f();
-    mat4f view = mat4f(1.0f);
-    mat4f projection = mat4f(1.0f);
+    std::vector<Type> type;
+    std::vector<vec3f> target;
+    std::vector<vec3f> color;
+    std::vector<mat4f> view;
+    std::vector<mat4f> projection;
 
     float zFar = 120.0f;
     float zNear = 0.1f;

@@ -6,10 +6,7 @@
 #include <GLFW/glfw3native.h>
 
 #include "timer.h"
-
-#include "window.h"
-#include "component_system.h"
-#include "render_context.h"
+#include "state.h"
 
 #include "Components/transform_component.h"
 #include "Components/render_component.h"
@@ -19,22 +16,7 @@
 
 namespace Reignite {
 
-  struct State {
 
-    float frameTimer;
-
-    std::shared_ptr<Window> window;
-    Input* input;
-
-    vec2f mousePos;
-    struct {
-      bool left = false;
-      bool right = false;
-      bool middle = false;
-    } mouseButtons;
-
-    std::shared_ptr<ComponentSystem> compSystem;
-  };
 
   Application::Application() {
 

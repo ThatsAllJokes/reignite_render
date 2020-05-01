@@ -603,7 +603,7 @@ VkImageView createImageView(VkDevice device, VkImage image, VkFormat format,
 VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout) {
 
   VkPushConstantRange pushConstantRange = 
-    vk::initializers::PushConstantRange(VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(Material::PushBlock), 0);
+    vk::initializers::PushConstantRange(VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(Reignite::MaterialResource::PushBlock), 0);
 
   VkPipelineLayoutCreateInfo pipelineLayoutInfo = 
     vk::initializers::PipelineLayoutCreateInfo(&descriptorSetLayout);
