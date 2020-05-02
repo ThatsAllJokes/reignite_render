@@ -19,13 +19,6 @@ namespace Reignite {
     std::shared_ptr<Window> window;
     Input* input;
 
-    vec2f mousePos;
-    struct {
-      bool left = false;
-      bool right = false;
-      bool middle = false;
-    } mouseButtons;
-
     std::shared_ptr<ComponentSystem> compSystem;
   };
 

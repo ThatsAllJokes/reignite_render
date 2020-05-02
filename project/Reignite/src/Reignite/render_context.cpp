@@ -518,9 +518,9 @@ namespace Reignite {
       io.DisplaySize = ImVec2((float)state->window->width(), (float)state->window->height());
       io.DeltaTime = state->frameTimer;
 
-      io.MousePos = ImVec2(state->mousePos.x, state->mousePos.y);
-      io.MouseDown[0] = state->mouseButtons.left;
-      io.MouseDown[1] = state->mouseButtons.right;
+      io.MousePos = ImVec2(state->window->mousePosition().x, state->window->mousePosition().y);
+      io.MouseDown[0] = state->input->isMouseButtonDown(0);
+      io.MouseDown[1] = state->input->isMouseButtonDown(1);
     }
 
     // prepare frame
@@ -578,9 +578,9 @@ namespace Reignite {
       io.DisplaySize = ImVec2((float)state->window->width(), (float)state->window->height());
       io.DeltaTime = state->frameTimer;
 
-      io.MousePos = ImVec2(state->mousePos.x, state->mousePos.y);
-      io.MouseDown[0] = state->mouseButtons.left;
-      io.MouseDown[1] = state->mouseButtons.right;
+      io.MousePos = ImVec2(state->window->mousePosition().x, state->window->mousePosition().y);
+      io.MouseDown[0] = state->input->isMouseButtonDown(0);
+      io.MouseDown[1] = state->input->isMouseButtonDown(1);
 
       ImGui::NewFrame();
 

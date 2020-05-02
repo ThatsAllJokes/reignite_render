@@ -8,16 +8,21 @@
 
 #include "log.h"
 #include "state.h"
+#include "consts.h"
 
 #include "Components/transform_component.h"
 #include "Components/render_component.h"
 #include "Components/light_component.h"
 #include "Components/camera_component.h"
 
+
 namespace Reignite {
 
   static bool s_glfw_initialized = false;
   std::vector<Input*> Reignite::Input::s_instances;
+
+
+  // WINDOW /////////////////////////////////////////////////////////////////////////////
 
   struct Window::Data {
 
@@ -26,7 +31,11 @@ namespace Reignite {
     std::string title;
 
     GLFWwindow* window;
+    vec2f mousePos;
     Input* input;
+
+    double mX; // avoid continously creating memory
+    double mY;
   };
 
   Window* Window::Create(const std::shared_ptr<State> s) {
@@ -41,11 +50,14 @@ namespace Reignite {
     data->height = 900;
     data->title = "Sample text";
     data->window = nullptr;
+    data->mousePos = vec2f();
+
+    data->mX = data->mY = 0.0;
 
     std::vector<s32> temp_keys = { 
-      GLFW_KEY_Q, GLFW_KEY_W, GLFW_KEY_E, 
-      GLFW_KEY_A, GLFW_KEY_S, GLFW_KEY_D,
-      GLFW_KEY_ESCAPE
+      RI_KEY_Q, RI_KEY_W, RI_KEY_E, 
+      RI_KEY_A, RI_KEY_S, RI_KEY_D,
+      RI_KEY_ESCAPE
     };
     data->input = new Input(temp_keys);
 
@@ -92,23 +104,10 @@ namespace Reignite {
   void Window::update() {
 
     glfwPollEvents();
-  }
 
-  void Window::updateMouseInput() {
-
-    double mX, mY;
-    glfwGetCursorPos(data->window, &mX, &mY);
-
-    state->mousePos.x = (float)mX;
-    state->mousePos.y = (float)mY;
-
-    int leftButtonState = glfwGetMouseButton(data->window, GLFW_MOUSE_BUTTON_LEFT);
-    int rightButtonState = glfwGetMouseButton(data->window, GLFW_MOUSE_BUTTON_RIGHT);
-    int middleButtonState = glfwGetMouseButton(data->window, GLFW_MOUSE_BUTTON_MIDDLE);
-
-    state->mouseButtons.left = (leftButtonState == GLFW_PRESS);
-    state->mouseButtons.right = (rightButtonState == GLFW_PRESS);
-    state->mouseButtons.middle = (middleButtonState == GLFW_PRESS);
+    glfwGetCursorPos(data->window, &data->mX, &data->mY);
+    data->mousePos.x = (float)data->mX;
+    data->mousePos.y = (float)data->mY;
   }
 
   bool Window::closeWindow() {
@@ -122,17 +121,31 @@ namespace Reignite {
 
   inline const std::string Window::title() { return data->title; }
 
+  inline const vec2f Window::mousePosition() { return data->mousePos; }
+
   inline void* const Window::currentWindow() { return data->window; }
 
-  
-  Input::Input(std::vector<int> keysToMonitor) {
+
+  // INPUT ////////////////////////////////////////////////////////////////////////////////
+
+  struct Input::Data {
+
+    std::map<s32, bool> keys;
+    std::map<s32, bool> buttons;
+    bool isEnabled;
+  };
+
+  Input::Input(std::vector<s32> keysToMonitor) {
 
     data = new Data();
     data->isEnabled = true;
 
-    for (s32 key : keysToMonitor) {
+    for (s32 key : keysToMonitor)
       data->keys[key] = false;
-    }
+
+    std::vector<s32> buttons = { 0, 1, 2 };
+    for (s32 button : buttons)
+      data->buttons[button] = false;
 
     s_instances.push_back(this);
   }
@@ -158,6 +171,30 @@ namespace Reignite {
     return result;
   }
 
+  bool Input::isMouseButtonDown(s32 button) {
+
+    bool result = false;
+    if (data->isEnabled) {
+
+      std::map<s32, bool>::iterator it = data->buttons.find(button);
+      if (it != data->buttons.end()) {
+        result = data->buttons[button];
+      }
+    }
+
+    return result;
+  }
+
+  inline bool Input::isEnabled() { return data->isEnabled; }
+
+  inline void Input::setIsEnabled(bool value) { data->isEnabled = value; }
+
+  void Input::setupKeyInputs(Window& window) {
+
+    glfwSetKeyCallback((GLFWwindow*)window.currentWindow(), Input::callback);
+    glfwSetMouseButtonCallback((GLFWwindow*)window.currentWindow(), Input::mouseCB);
+  }
+
   void Input::setIsKeyDown(s32 key, bool isDown) {
 
     std::map<s32, bool>::iterator it = data->keys.find(key);
@@ -166,15 +203,25 @@ namespace Reignite {
     }
   }
 
-  void Input::setupKeyInputs(Window& window) {
+  void Input::setIsMouseButtonDown(s32 button, bool isDown) {
 
-    glfwSetKeyCallback((GLFWwindow*)window.currentWindow(), Input::callback);
+    std::map<s32, bool>::iterator it = data->buttons.find(button);
+    if (it != data->buttons.end()) {
+      data->buttons[button] = isDown;
+    }
   }
 
   void Input::callback(GLFWwindow* window, s32 key, s32 scancode, s32 action, s32 mods) {
 
     for (Input* input : s_instances) {
       input->setIsKeyDown(key, action != GLFW_RELEASE);
+    }
+  }
+
+  void Input::mouseCB(GLFWwindow* window, s32 button, s32 action, s32 mods) {
+    
+    for (Input* input : s_instances) {
+      input->setIsMouseButtonDown(button, action != GLFW_RELEASE);
     }
   }
 

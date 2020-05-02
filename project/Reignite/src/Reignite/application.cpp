@@ -35,8 +35,6 @@ namespace Reignite {
       Reignite::Timer::StartTime();
 
       window->update();
-      window->updateMouseInput();
-
       component_system->update();
 
       render_context->draw();
