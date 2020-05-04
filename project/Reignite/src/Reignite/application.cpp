@@ -16,8 +16,6 @@
 
 namespace Reignite {
 
-
-
   Application::Application() {
 
     initialize();
@@ -37,7 +35,8 @@ namespace Reignite {
       window->update();
       component_system->update();
 
-      render_context->draw();
+      render_context->drawScene();
+      render_context->drawOverlay();
 
       auto timeDiff = Reignite::Timer::EndTime();
       state->frameTimer = (float)timeDiff / 1000.0f;

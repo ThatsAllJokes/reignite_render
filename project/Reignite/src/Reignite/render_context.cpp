@@ -108,21 +108,6 @@ namespace Reignite {
     // Deferred pipeline
 
     struct {
-      struct {
-        vk::Texture2D colorMap;
-        vk::Texture2D normalMap;
-        vk::Texture2D roughness;
-        vk::Texture2D metallic;
-      } model;
-      struct {
-        vk::Texture2D colorMap;
-        vk::Texture2D normalMap;
-        vk::Texture2D roughness;
-        vk::Texture2D metallic;
-      } floor;
-    } textures;
-
-    struct {
       VkPipelineVertexInputStateCreateInfo inputState;
       std::vector<VkVertexInputBindingDescription> bindingDescriptions;
       std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
@@ -132,8 +117,8 @@ namespace Reignite {
       mat4f projection;
       mat4f model;
       mat4f view;
-      vec4f instancePos[3];
-      int layer;
+      vec4f instancePos[3]; // TODO: Check current use
+      int layer; // TODO: Check current use
     } uboVS, uboOffscreenVS;
 
     struct {
@@ -162,7 +147,6 @@ namespace Reignite {
 
     struct {
       vk::Buffer vsFullScreen;
-      vk::Buffer vsOffscreen;
       vk::Buffer fsLights;
       vk::Buffer skybox;
       vk::Buffer gsShadows;
@@ -192,18 +176,6 @@ namespace Reignite {
     VkDescriptorSet descriptorSet;
     VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorSetLayout skyboxDescriptorSetLayout;
-
-    /*struct FrameBuffer {
-      int32_t width, height;
-      VkFramebuffer frameBuffer;
-      FrameBufferAttachment position;
-      FrameBufferAttachment normal;
-      FrameBufferAttachment albedo;
-      FrameBufferAttachment roughness;
-      FrameBufferAttachment metallic;
-      FrameBufferAttachment depth;
-      VkRenderPass renderPass;
-    } offScreenFrameBuf;*/
 
     struct {
       vk::Framebuffer* deferred;
@@ -282,17 +254,12 @@ namespace Reignite {
 
     newMaterial.vulkanState = data->vulkanState;
 
+    // Create and Map uniform buffer
     VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      sizeof(data->uboVS), &newMaterial.uboBasics));
+      sizeof(data->uboOffscreenVS), &newMaterial.uboBasics));
 
-    VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      sizeof(data->uboFragmentLights), &newMaterial.uboLights));
-
-    /*current_material.descriptorSet = createDescriptorSets(data->device, data->descriptorPool, 
-      data->descriptorSetLayout, current_material.uniformBuffer, current_material.lightParams, 
-      data->texture.imageView, data->textureSampler);*/
+    VK_CHECK(newMaterial.uboBasics.map());
 
     data->materials.push_back(newMaterial);
     return static_cast<u32>(data->materials.size() - 1);
@@ -411,13 +378,13 @@ namespace Reignite {
     vkCmdBindPipeline(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.offscreen);
 
     // Background
-    vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.floor, 0, NULL);
+    vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->materials[1].descriptorSet, 0, NULL);
     vkCmdBindVertexBuffers(data->offScreenCmdBuffer, 0, 1, &data->geometries[0].vertexBuffer.buffer, offsets2);
     vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[0].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[0].indices.size(), 1, 0, 0, 0);
 
     // Object
-    vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.model, 0, NULL);
+    vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->materials[0].descriptorSet, 0, NULL);
     vkCmdBindVertexBuffers(data->offScreenCmdBuffer, /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->geometries[2].vertexBuffer.buffer, offsets2);
     vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[2].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
     vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[2].indices.size(), 1, 0, 0, 0);
@@ -478,8 +445,6 @@ namespace Reignite {
       // Final result on a full screen quad
       vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.deferred, 0, 1, &data->descriptorSet, 0, NULL);
       vkCmdBindPipeline(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.deferred);
-      //vkCmdBindVertexBuffers(data->commandBuffers[i], /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->tmp_vertices.buffer, offsets);
-      //vkCmdBindIndexBuffer(data->commandBuffers[i], data->tmp_indices.buffer, 0, VK_INDEX_TYPE_UINT32);
       vkCmdDraw(data->commandBuffers[i], 6, 1, 0, 0);
 
       if (data->shadows_debug_display) {
@@ -506,22 +471,11 @@ namespace Reignite {
 
   }
 
-  void Reignite::RenderContext::draw() {
+  void Reignite::RenderContext::drawScene() {
 
     updateUniformBufferDeferredMatrices();
     updateUniformBufferDeferredLights();
     updateUniformBuffersScreen();
-
-    // Imgui setup
-    {
-      ImGuiIO& io = ImGui::GetIO();
-      io.DisplaySize = ImVec2((float)state->window->width(), (float)state->window->height());
-      io.DeltaTime = state->frameTimer;
-
-      io.MousePos = ImVec2(state->window->mousePosition().x, state->window->mousePosition().y);
-      io.MouseDown[0] = state->input->isMouseButtonDown(0);
-      io.MouseDown[1] = state->input->isMouseButtonDown(1);
-    }
 
     // prepare frame
     {
@@ -571,10 +525,24 @@ namespace Reignite {
       VK_CHECK(vkQueueWaitIdle(data->queue));
     }
 
+  }
+
+  void Reignite::RenderContext::drawOverlay() {
+
+    // Imgui setup
+    {
+      ImGuiIO& io = ImGui::GetIO();
+      io.DisplaySize = ImVec2((float)state->window->width(), (float)state->window->height());
+      io.DeltaTime = state->frameTimer;
+
+      io.MousePos = ImVec2(state->window->mousePosition().x, state->window->mousePosition().y);
+      io.MouseDown[0] = state->input->isMouseButtonDown(0);
+      io.MouseDown[1] = state->input->isMouseButtonDown(1);
+    }
+
     // update overlay
     {
       ImGuiIO& io = ImGui::GetIO();
-
       io.DisplaySize = ImVec2((float)state->window->width(), (float)state->window->height());
       io.DeltaTime = state->frameTimer;
 
@@ -592,10 +560,10 @@ namespace Reignite {
       //ImGui::Text("%.2f ms/frame (%.1d fps)", (1000.0f / lastFPS), lastFPS);
 
       ImGui::PushItemWidth(110.0f * data->overlay.scale);
-    
+
       //OnUpdateUIOverlay(&UIOverlay);
       bool res = ImGui::Checkbox("Show render targets", &data->deferred_debug_display);
-      if (res) { 
+      if (res) {
         data->overlay.updated = true;
         buildCommandBuffers();
         updateUniformBuffersScreen();
@@ -608,7 +576,6 @@ namespace Reignite {
         buildDeferredCommands();
         updateUniformBuffersScreen();
       }
-
 
       ImGui::PopItemWidth();
 
@@ -657,9 +624,15 @@ namespace Reignite {
 
     data->uboOffscreenVS.projection = state->compSystem->camera()->projection;
     data->uboOffscreenVS.view = state->compSystem->camera()->view;
-    data->uboOffscreenVS.model = state->compSystem->transform()->global[0]; //glm::translate(glm::mat4(1.0f), vec3f(0.0f, 2.0f, 0.0f));
+    data->uboOffscreenVS.model = state->compSystem->transform()->global[0];
 
-    memcpy(data->uniformBuffers.vsOffscreen.mapped, &data->uboOffscreenVS, sizeof(data->uboOffscreenVS));
+    memcpy(data->materials[0].uboBasics.mapped, &data->uboOffscreenVS, sizeof(data->uboOffscreenVS));
+
+    data->uboOffscreenVS.projection = state->compSystem->camera()->projection;
+    data->uboOffscreenVS.view = state->compSystem->camera()->view;
+    data->uboOffscreenVS.model = state->compSystem->transform()->global[1];
+
+    memcpy(data->materials[1].uboBasics.mapped, &data->uboOffscreenVS, sizeof(data->uboOffscreenVS));
   }
 
   void RenderContext::updateUniformBufferDeferredLights() {
@@ -711,22 +684,22 @@ namespace Reignite {
     data->textures.floor.normalMap.loadFromFile(Reignite::Tools::GetAssetPath() + "textures/stonefloor01_normal_bc3_unorm.ktx", VK_FORMAT_BC3_UNORM_BLOCK, data->device, data->physicalDevice, data->commandPool, data->queue);
     */
 
-    data->textures.model.colorMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_albedo.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-    data->textures.model.normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-    data->textures.model.roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-    data->textures.model.metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->materials[0].colorMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_albedo.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->materials[0].normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->materials[0].roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->materials[0].metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
 
-    data->textures.floor.colorMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_albedo.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-    data->textures.floor.normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-    data->textures.floor.roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-    data->textures.floor.metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-    
-    /*
-    data->textures.floor.colorMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_albedo.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-    data->textures.floor.normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-    data->textures.floor.roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
-    data->textures.floor.metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    /*data->materials[1].colorMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_albedo.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->materials[1].normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->materials[1].roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->materials[1].metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Marble_SlabWhite_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     */
+    
+    data->materials[1].colorMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_albedo.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->materials[1].normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->materials[1].roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->materials[1].metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    
 
     std::string filename;
     VkFormat format;
@@ -953,11 +926,8 @@ namespace Reignite {
       data->overlay.prepareResources();
       data->overlay.preparePipeline(data->pipelineCache, data->renderPass);
     }
-
-    // Deferred features initialization ->
     
-    // load resources
-    loadResources();
+    // Deferred features initialization ->
 
     // Generate Quads
     {
@@ -1088,15 +1058,13 @@ namespace Reignite {
       data->uboFragmentLights.lights[2] = { glm::vec4(0.0f, 10.0f, 4.0f, 1.0f),    glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f) };
     }
 
+
+
     // Prepare UniformBuffers
     {
       VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         sizeof(data->uboVS), &data->uniformBuffers.vsFullScreen));
-
-      VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        sizeof(data->uboOffscreenVS), &data->uniformBuffers.vsOffscreen));
 
       VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -1111,7 +1079,6 @@ namespace Reignite {
         sizeof(data->skyboxUboVS), &data->uniformBuffers.skybox));
 
       VK_CHECK(data->uniformBuffers.vsFullScreen.map());
-      VK_CHECK(data->uniformBuffers.vsOffscreen.map());
       VK_CHECK(data->uniformBuffers.fsLights.map());
       VK_CHECK(data->uniformBuffers.gsShadows.map());
       VK_CHECK(data->uniformBuffers.skybox.map());
@@ -1124,7 +1091,6 @@ namespace Reignite {
       data->uboOffscreenVS.instancePos[2] = glm::vec4(4.0f, 0.0, -6.0f, 0.0f);
 
       updateUniformBuffersScreen();
-      updateUniformBufferDeferredMatrices();
       updateUniformBufferDeferredLights();
     }
     
@@ -1362,6 +1328,22 @@ namespace Reignite {
       VK_CHECK(CreateDescriptorPool(data->device, data->descriptorPool, poolSizes));
     }
 
+    // Generate Engine Resources ->
+    createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/geosphere.obj");
+    createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/box.obj");
+    createGeometryResource(kGeometryEnum_Terrain);
+
+    createMaterialResource();
+    createMaterialResource();
+
+    // load resources
+    loadResources();
+
+    for (u32 i = 0; i < data->materials.size(); i++)
+      data->materials[i].update(data->descriptorPool, data->descriptorSetLayout);
+
+    updateUniformBufferDeferredMatrices();
+
     // Setup DescriptorSet
     {
       VkDescriptorSetAllocateInfo allocInfo =
@@ -1423,55 +1405,6 @@ namespace Reignite {
 
       vkUpdateDescriptorSets(data->device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
 
-      // Offscreen (scene)
-
-      // Model
-      VK_CHECK(vkAllocateDescriptorSets(data->device, &allocInfo, &data->descriptorSets.model));
-      writeDescriptorSets =
-      {
-        // Binding 0: Vertex shader uniform buffer
-        vk::initializers::WriteDescriptorSet(data->descriptorSets.model,
-          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &data->uniformBuffers.vsOffscreen.descriptor),
-        // Binding 1: Color map
-        vk::initializers::WriteDescriptorSet(data->descriptorSets.model,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &data->textures.model.colorMap.descriptor),
-        // Binding 2: Normal map
-        vk::initializers::WriteDescriptorSet(data->descriptorSets.model,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &data->textures.model.normalMap.descriptor),
-        // Binding 3: Roughness map
-        vk::initializers::WriteDescriptorSet(data->descriptorSets.model,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &data->textures.model.roughness.descriptor),
-        // Binding 4: Metallic map
-        vk::initializers::WriteDescriptorSet(data->descriptorSets.model,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &data->textures.model.metallic.descriptor)
-      };
-
-      vkUpdateDescriptorSets(data->device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
-
-      // Background
-      VK_CHECK(vkAllocateDescriptorSets(data->device, &allocInfo, &data->descriptorSets.floor));
-    
-      writeDescriptorSets =
-      {
-        // Binding 0: Vertex shader uniform buffer
-        vk::initializers::WriteDescriptorSet(data->descriptorSets.floor,
-          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &data->uniformBuffers.vsOffscreen.descriptor),
-        // Binding 1: Color map
-        vk::initializers::WriteDescriptorSet(data->descriptorSets.floor,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &data->textures.floor.colorMap.descriptor),
-        // Binding 2: Normal map
-        vk::initializers::WriteDescriptorSet(data->descriptorSets.floor,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &data->textures.floor.normalMap.descriptor),
-
-        vk::initializers::WriteDescriptorSet(data->descriptorSets.floor,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &data->textures.floor.roughness.descriptor),
-
-        vk::initializers::WriteDescriptorSet(data->descriptorSets.floor,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &data->textures.floor.metallic.descriptor)
-      };
-
-      vkUpdateDescriptorSets(data->device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
-    
       // Shadow mapping descriptor set
       VK_CHECK(vkAllocateDescriptorSets(data->device, &allocInfo, &data->descriptorSets.shadow));
       writeDescriptorSets = {
@@ -1509,15 +1442,6 @@ namespace Reignite {
       };
       vkUpdateDescriptorSets(data->device, (u32)writeDescriptorSets.size(), writeDescriptorSets.data(), 0, NULL);
     }
-
-    // Creation of engine graphic resources ->
-
-    createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/geosphere.obj");
-    createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/box.obj");
-    createGeometryResource(kGeometryEnum_Terrain);
-
-    //createMaterialResource();
-    //createMaterialResource();
 
     buildCommandBuffers();
     buildDeferredCommands();
