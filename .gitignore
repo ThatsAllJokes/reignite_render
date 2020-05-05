@@ -34,6 +34,8 @@
 # Asset files
 *.jpg
 *.png
+*.ktx
+*.tif
 
 # project files
 *.vcxproj
@@ -46,3 +48,6 @@
 bin
 bin-int
 project/.vs
+
+# Excludes
+!tools/genie.exe

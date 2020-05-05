@@ -99,8 +99,8 @@ project "Reignite"
   configuration { }
 
   custombuildtask {
-    { "project/shaders/*.glsl", "project/shaders/%(Filename).spv", 
-    { "%(FullPath)" }, { "$(VULKAN_SDK)\\Bin\\glslangValidator %(FullPath) -V -o ../shaders/%(Filename).spv" } },
+    { "project/data/shaders/*.glsl", "project/data/shaders/%(Filename).spv", 
+    { "%(FullPath)" }, { "$(VULKAN_SDK)\\Bin\\glslangValidator %(FullPath) -V -o ../data/shaders/%(Filename).spv" } },
   }
 
 project "Render"

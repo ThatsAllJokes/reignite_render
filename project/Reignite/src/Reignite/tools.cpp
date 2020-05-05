@@ -17,9 +17,9 @@
 
 const std::string Reignite::Tools::GetAssetPath() {
 #if EXE_PATH
-  return "./../../../../project/";
+  return "./../../../../project/data/";
 #else
-  return "./../";
+  return "./../data/";
 #endif
 }
 
