@@ -43,7 +43,7 @@ namespace Reignite {
     float Zfar;
 
     float movementSpeed = 1.0f;
-    float rotationSpeed = 1.0f;
+    float rotationSpeed = 20.0f;
 
     bool updated = false;
     bool flipY = false;

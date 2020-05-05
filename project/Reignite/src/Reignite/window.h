@@ -22,13 +22,14 @@ namespace Reignite {
     virtual ~Window();
 
     void update();
-    void updateMouseInput();
 
     bool closeWindow();
 
     const u16 width();
     const u16 height();
     const std::string title();
+
+    const vec2f mousePosition();
 
     void* const currentWindow();
 
@@ -52,9 +53,10 @@ namespace Reignite {
     ~Input();
 
     bool isKeyDown(s32 key);
+    bool isMouseButtonDown(s32 button);
 
-    bool isEnabled() { return data->isEnabled; }
-    void setIsEnabled(bool value) { data->isEnabled = value; }
+    bool isEnabled();
+    void setIsEnabled(bool value);
 
     // Must be called in order before any input instances to work
     static void setupKeyInputs(Window& window);
@@ -62,14 +64,12 @@ namespace Reignite {
    private:
 
     void setIsKeyDown(s32 key, bool isDown);
+    void setIsMouseButtonDown(s32 button, bool isDown);
 
     static void callback(GLFWwindow* window, s32 key, s32 scancode, s32 action, s32 mods);
+    static void mouseCB(GLFWwindow* window, s32 button, s32 action, s32 mods);
 
-    struct Data {
-      std::map<s32, bool> keys;
-      bool isEnabled;
-
-    };
+    struct Data;
     Data* data;
 
     static std::vector<Input*> s_instances;

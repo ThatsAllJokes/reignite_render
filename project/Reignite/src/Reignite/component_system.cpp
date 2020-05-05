@@ -55,9 +55,9 @@ namespace Reignite {
 
     data->transformComponents.add(vec3f(0.0f));
     data->lightComponents.add(vec3f(0.0f, 0.0f, 1.0f));
-    data->lightComponents.used[data->lightComponents.size - 1] = false;
 
     data->renderComponents.add();
+    data->renderComponents.used[data->renderComponents.size - 1] = false;
   }
 
   void Reignite::ComponentSystem::addEntity(s32 parentId) {
@@ -112,7 +112,7 @@ namespace Reignite {
     data->lightComponents.init(data->params.max_entities);
 
     // initialize camera
-    data->camera.position = { 2.15f, 0.3f, -8.75f };
+    data->camera.position = { 2.15f, 0.0f, -8.75f };
     data->camera.rotation = glm::vec3(-0.75f, 12.5f, 0.0f);
     data->camera.setInputAccess(data->state);
     data->camera.setPerspective(60.0f, (float)state->window->width() / state->window->height(), 0.1f, 256.0f);
@@ -121,6 +121,7 @@ namespace Reignite {
     addEntity();
     addEntity();
 
+    data->transformComponents.position[0] = vec3f(0.0f, 1.0f, 0.0f);
 
     update();
   }

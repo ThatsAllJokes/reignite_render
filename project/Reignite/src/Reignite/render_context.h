@@ -45,7 +45,8 @@ namespace Reignite {
     void buildDeferredCommands();
     void buildCommandBuffers();
 
-    void draw();
+    void drawScene();
+    void drawOverlay();
 
    private:
 

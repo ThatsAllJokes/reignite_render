@@ -20,5 +20,8 @@ del "project\Render\Render.vcxproj.user" /q
 
 del "project\Reignite.sln" /q
 
+REM Spr-v files
+del /s /q /f "project\data\shaders\*.spv"
+
 echo Succesfuly cleaned!
 PAUSE

@@ -18,3 +18,6 @@
 [submodule "extern/tinyobjloader"]
 	path = extern/tinyobjloader
 	url = https://github.com/syoyo/tinyobjloader.git
+[submodule "extern/KTX-Software"]
+	path = extern/KTX-Software
+	url = https://github.com/KhronosGroup/KTX-Software.git

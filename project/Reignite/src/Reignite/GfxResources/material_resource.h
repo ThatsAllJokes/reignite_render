@@ -18,6 +18,8 @@ namespace Reignite {
     void init();
     void destroy();
 
+    void update(VkDescriptorPool descriptorPool, VkDescriptorSetLayout descriptorSetLayout);
+
     std::string name;
     struct PushBlock {
       float r;
@@ -28,15 +30,14 @@ namespace Reignite {
     } params;
 
     vk::VulkanState* vulkanState;
-    vk::Buffer uboBasics;
-    vk::Buffer uboLights;
-    vk::Buffer uboShadows;
-    VkDescriptorSet descriptorSet;
 
+    vk::Buffer uboBasics;
     vk::Texture2D colorMap;
     vk::Texture2D normalMap;
     vk::Texture2D roughness;
     vk::Texture2D metallic;
+
+    VkDescriptorSet descriptorSet;
   };
 
 } // end of Reignite namespace
