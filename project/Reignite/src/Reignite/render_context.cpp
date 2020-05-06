@@ -37,10 +37,36 @@ namespace Reignite {
     bool shadows_debug_display = false;
     bool enable_shadows = true;
 
-    //mat4f view_matrix;
-    //vec3f camera_position;
-    //mat4f projection_matrix;
-    //std::vector<mat4f> model_list;
+    mat4f view;
+    mat4f projection;
+    vec3f cameraPosition;
+    
+    struct {
+
+      u32 size;
+
+      std::vector<u32> refId;
+
+      std::vector<mat4f> model;
+
+      std::vector<u32> geoId;
+      std::vector<u32> matId;
+    } renderData;
+
+    struct {
+
+      u32 size;
+
+      std::vector<u32> refId;
+
+      std::vector<mat4f> model;
+      std::vector<vec4f> position;
+
+      std::vector<vec4f> target;
+      std::vector<vec4f> color;
+      std::vector<float> radius;
+      std::vector<mat4f> view;
+    } lightData;
 
     // Vulkan base
     VkInstance instance;
@@ -265,15 +291,89 @@ namespace Reignite {
     return static_cast<u32>(data->materials.size() - 1);
   }
 
-  void Reignite::RenderContext::setRenderInfo() {
+  void Reignite::RenderContext::initRenderState() {
   
-    //data->view_matrix = state->compSystem->camera.view;
-    //data->camera_position = state->camera.position;
-    //data->projection_matrix = state->camera.projection;
+    TransformComponents* transform = state->compSystem->transform();
+    RenderComponents* render = state->compSystem->render();
+    LightComponents* light = state->compSystem->light();
 
-    /*for (u32 i = 0; i < state->transform_components.size(); ++i) {
-      data->model_list.push_back(state->transform_components->transformComponents.global[i]);
-    }*/
+    // Camera info
+    data->view = state->compSystem->camera()->view;
+    data->projection = state->compSystem->camera()->projection;
+    data->cameraPosition = state->compSystem->camera()->position;
+
+    // Rendered entities info
+    for (u32 i = 0; i < render->size; ++i) {
+
+      if (render->used[i] && render->active[i]) {
+      
+        data->renderData.refId.push_back(i);
+
+        data->renderData.model.push_back(transform->global[i]);
+
+        data->renderData.geoId.push_back(render->geometry[i]);
+        data->renderData.matId.push_back(render->material[i]);
+
+        data->renderData.size++;
+      }
+    }
+
+    // Precalculated light info
+    for (u32 i = 0; i < light->size; ++i) {
+
+      if (light->used[i] && light->active[i]) {
+
+        data->lightData.refId.push_back(i);
+
+        data->lightData.model.push_back(transform->global[i]);
+        data->lightData.position.push_back({ transform->position[i], 1.0f });
+
+        data->lightData.target.push_back({ light->target[i], 0.0f });
+        data->lightData.color.push_back({ light->color[i], 0.0f });
+        data->lightData.radius.push_back(35.0f /*light->radius[i]*/);
+        data->lightData.view.push_back(light->view[i]);
+
+        data->lightData.size++;
+      }
+    }
+
+  }
+
+  void Reignite::RenderContext::updateRenderState() {
+
+    TransformComponents* transform = state->compSystem->transform();
+    RenderComponents* render = state->compSystem->render();
+    LightComponents* light = state->compSystem->light();
+
+    // Camera info
+    data->view = state->compSystem->camera()->view;
+    data->projection = state->compSystem->camera()->projection;
+    data->cameraPosition = state->compSystem->camera()->position;
+
+    // Rendered entities info
+    for (u32 i = 0; i < data->renderData.size; ++i) {
+
+      u32 compIndex = data->renderData.refId[i];
+
+      data->renderData.model[i] = transform->global[compIndex];
+
+      data->renderData.geoId[i] = render->geometry[compIndex];
+      data->renderData.matId[i] = render->material[compIndex];
+    }
+
+    // Precalculated light info
+    for (u32 i = 0; i < data->lightData.size; ++i) {
+
+      u32 compIndex = data->lightData.refId[i];
+
+      data->lightData.model[i] = transform->global[compIndex];
+      data->lightData.position[i] = { transform->position[compIndex], 1.0f };
+
+      data->lightData.target[i] = { light->target[compIndex], 0.0f };
+      data->lightData.color[i] = { light->color[compIndex], 0.0f };
+      data->lightData.radius[i] = 35.0f/*light->radius[compIndex]*/;
+      data->lightData.view[i] = light->view[compIndex];
+    }
   }
 
   void Reignite::RenderContext::buildDeferredCommands() {
@@ -321,19 +421,17 @@ namespace Reignite {
     vkCmdBeginRenderPass(data->offScreenCmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.shadowPass);
     
-    //renderScene(data->offScreenCmdBuffer, true);
     VkDeviceSize offsets[1] = { 0 };
 
-    vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.shadow, 0, NULL);
-    vkCmdBindVertexBuffers(data->offScreenCmdBuffer, 0, 1, &data->geometries[0].vertexBuffer.buffer, offsets);
-    vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[0].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[0].indices.size(), 1, 0, 0, 0);
+    for (u32 i = 0; i < data->renderData.size; ++i) {
 
-    // Object
-    vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.shadow, 0, NULL);
-    vkCmdBindVertexBuffers(data->offScreenCmdBuffer, /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->geometries[2].vertexBuffer.buffer, offsets);
-    vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[2].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[2].indices.size(), 1, 0, 0, 0);
+      u32 geoIndex = data->renderData.geoId[i];
+
+      vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.shadow, 0, NULL);
+      vkCmdBindVertexBuffers(data->offScreenCmdBuffer, /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->geometries[geoIndex].vertexBuffer.buffer, offsets);
+      vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[geoIndex].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+      vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[geoIndex].indices.size(), 1, 0, 0, 0);
+    }
 
     vkCmdEndRenderPass(data->offScreenCmdBuffer);
 
@@ -377,17 +475,16 @@ namespace Reignite {
 
     vkCmdBindPipeline(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.offscreen);
 
-    // Background
-    vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->materials[1].descriptorSet, 0, NULL);
-    vkCmdBindVertexBuffers(data->offScreenCmdBuffer, 0, 1, &data->geometries[0].vertexBuffer.buffer, offsets2);
-    vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[0].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[0].indices.size(), 1, 0, 0, 0);
+    for (u32 i = 0; i < data->renderData.size; ++i) {
 
-    // Object
-    vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->materials[0].descriptorSet, 0, NULL);
-    vkCmdBindVertexBuffers(data->offScreenCmdBuffer, /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->geometries[2].vertexBuffer.buffer, offsets2);
-    vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[2].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[2].indices.size(), 1, 0, 0, 0);
+      u32 matIndex = data->renderData.matId[i];
+      u32 geoIndex = data->renderData.geoId[i];
+
+      vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->materials[matIndex].descriptorSet, 0, NULL);
+      vkCmdBindVertexBuffers(data->offScreenCmdBuffer, 0, 1, &data->geometries[geoIndex].vertexBuffer.buffer, offsets2);
+      vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[geoIndex].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+      vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[geoIndex].indices.size(), 1, 0, 0, 0);
+    }
 
     vkCmdEndRenderPass(data->offScreenCmdBuffer);
 
@@ -473,6 +570,7 @@ namespace Reignite {
 
   void Reignite::RenderContext::drawScene() {
 
+    updateRenderState();
     updateUniformBufferDeferredMatrices();
     updateUniformBufferDeferredLights();
     updateUniformBuffersScreen();
@@ -597,16 +695,17 @@ namespace Reignite {
   void RenderContext::updateUniformBuffersScreen() {
 
     if(data->deferred_debug_display) {
-
       data->uboVS.projection = glm::ortho(0.0f, 2.0f, 0.0f, 2.0f, -1.0f, 1.0f);
     }
     else {
-
       data->uboVS.projection = glm::ortho(0.0f, 1.0f, 0.0f, 1.0f, -1.0f, 1.0f);
     }
 
     data->uboVS.model = mat4f(1.0f);
     memcpy(data->uniformBuffers.vsFullScreen.mapped, &data->uboVS, sizeof(data->uboVS));
+  }
+   
+  void RenderContext::updateUniformBufferDeferredMatrices() {
 
     mat4f viewMatrix = glm::mat4(1.0f);
     data->skyboxUboVS.projection = glm::perspective(glm::radians(60.0f), (float)state->window->width() / (float)state->window->height(), 0.001f, 256.0f);
@@ -618,39 +717,32 @@ namespace Reignite {
     data->skyboxUboVS.model = glm::rotate(data->skyboxUboVS.model, glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
     memcpy(data->uniformBuffers.skybox.mapped, &data->skyboxUboVS, sizeof(data->skyboxUboVS));
-  }
 
-  void RenderContext::updateUniformBufferDeferredMatrices() {
+    for (u32 i = 0; i < data->renderData.size; ++i) {
 
-    data->uboOffscreenVS.projection = state->compSystem->camera()->projection;
-    data->uboOffscreenVS.view = state->compSystem->camera()->view;
-    data->uboOffscreenVS.model = state->compSystem->transform()->global[0];
+      u32 matIndex = data->renderData.matId[i];
 
-    memcpy(data->materials[0].uboBasics.mapped, &data->uboOffscreenVS, sizeof(data->uboOffscreenVS));
+      data->uboOffscreenVS.projection = data->projection;
+      data->uboOffscreenVS.view = data->view;
+      data->uboOffscreenVS.model = data->renderData.model[i];
 
-    data->uboOffscreenVS.projection = state->compSystem->camera()->projection;
-    data->uboOffscreenVS.view = state->compSystem->camera()->view;
-    data->uboOffscreenVS.model = state->compSystem->transform()->global[1];
-
-    memcpy(data->materials[1].uboBasics.mapped, &data->uboOffscreenVS, sizeof(data->uboOffscreenVS));
+      memcpy(data->materials[matIndex].uboBasics.mapped, &data->uboOffscreenVS, sizeof(data->uboOffscreenVS));
+    }
   }
 
   void RenderContext::updateUniformBufferDeferredLights() {
 
-    static auto startTime = std::chrono::high_resolution_clock::now();
+    // Lights ubo data updating
+    for (u32 i = 0; i < data->lightData.size; ++i) {
 
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float timer = 0.1f * std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+      data->uboFragmentLights.lights[i].color = data->lightData.color[i];
+      data->uboFragmentLights.lights[i].position = data->lightData.position[i];
+      data->uboFragmentLights.lights[i].radius = data->lightData.radius[i];
+      data->uboFragmentLights.lights[i].target = data->lightData.target[i];
+      data->uboFragmentLights.lights[i].view = data->lightData.view[i];
+    }
 
-    /*data->uboFragmentLights.lights[0].position.x = -sin(glm::radians(360.0f * timer)) * 5.0f;
-    data->uboFragmentLights.lights[0].position.z = -cos(glm::radians(360.0f * timer)) * 5.0f;
-
-    data->uboFragmentLights.lights[1].position.x = -4.0f + sin(glm::radians(360.0f * timer) + 45.0f) * 2.0f;
-    data->uboFragmentLights.lights[1].position.z = 0.0f + cos(glm::radians(360.0f * timer) + 45.0f) * 2.0f;*/
-
-    data->uboFragmentLights.lights[2].position.x = 0.0f + sin(glm::radians(360.0f * timer)) * 2.0f;
-    data->uboFragmentLights.lights[2].position.z = 0.0f + cos(glm::radians(360.0f * timer)) * 2.0f;
-
+    // Shadow ubo data updating
     float zNear = 0.1f;
     float zFar = 64.0f;
     float lightFOV = 100.0f;
@@ -1053,9 +1145,9 @@ namespace Reignite {
 
     // init lights // Done as a component in the future
     {
-      data->uboFragmentLights.lights[0] = { glm::vec4(-14.0f, 0.5f, 15.0f, 1.0f),  glm::vec4(-2.0f, 0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.5f, 0.5f, 0.0f) };
-      data->uboFragmentLights.lights[1] = { glm::vec4(14.0f, 4.0f, 12.0f, 1.0f),   glm::vec4(2.0f, 0.0f, 0.0f, 0.0f),  glm::vec4(0.0f, 0.0f, 1.0f, 0.0f) };
-      data->uboFragmentLights.lights[2] = { glm::vec4(0.0f, 10.0f, 4.0f, 1.0f),    glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f) };
+      //data->uboFragmentLights.lights[0] = { glm::vec4(-14.0f, 0.5f, 15.0f, 1.0f),  glm::vec4(-2.0f, 0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.5f, 0.5f, 0.0f) };
+      //data->uboFragmentLights.lights[1] = { glm::vec4(14.0f, 4.0f, 12.0f, 1.0f),   glm::vec4(2.0f, 0.0f, 0.0f, 0.0f),  glm::vec4(0.0f, 0.0f, 1.0f, 0.0f) };
+      //data->uboFragmentLights.lights[2] = { glm::vec4(0.0f, 10.0f, 4.0f, 1.0f),    glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f) };
     }
 
 
@@ -1332,9 +1424,13 @@ namespace Reignite {
     createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/geosphere.obj");
     createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/box.obj");
     createGeometryResource(kGeometryEnum_Terrain);
+    createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/bulb.obj");
 
     createMaterialResource();
     createMaterialResource();
+    //createMaterialResource();
+    //createMaterialResource();
+    //createMaterialResource();
 
     // load resources
     loadResources();
@@ -1443,6 +1539,7 @@ namespace Reignite {
       vkUpdateDescriptorSets(data->device, (u32)writeDescriptorSets.size(), writeDescriptorSets.data(), 0, NULL);
     }
 
+    initRenderState();
     buildCommandBuffers();
     buildDeferredCommands();
   }

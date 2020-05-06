@@ -48,27 +48,56 @@ namespace Reignite {
     delete data;
   }
 
-  void Reignite::ComponentSystem::addEntity() {
+  void Reignite::ComponentSystem::addEntityEmpty() {
 
-    data->entities.entity.push_back(data->entities.size++); // add entity and increment count
-    data->entities.parent.push_back(-1); 
-
-    data->transformComponents.add(vec3f(0.0f));
-    data->lightComponents.add(vec3f(0.0f, 0.0f, 1.0f));
-
-    data->renderComponents.add();
-    data->renderComponents.used[data->renderComponents.size - 1] = false;
+    addEntityEmpty(-1);
   }
 
-  void Reignite::ComponentSystem::addEntity(s32 parentId) {
+  void Reignite::ComponentSystem::addEntityEmpty(s32 parentId) {
 
     data->entities.entity.push_back(data->entities.size++); // add entity and increment count
     data->entities.parent.push_back(parentId);
 
+    data->renderComponents.add();
+    data->renderComponents.used[data->renderComponents.size - 1] = false;
+
     data->transformComponents.add(vec3f(0.0f));
     data->lightComponents.add(vec3f(0.0f, 0.0f, 1.0f));
+    data->lightComponents.used[data->lightComponents.size - 1] = false;
+  }
+
+  void Reignite::ComponentSystem::addEntityRender() {
+
+    addEntityRender(-1);
+  }
+
+  void Reignite::ComponentSystem::addEntityRender(s32 parentId) {
+
+    data->entities.entity.push_back(data->entities.size++); // add entity and increment count
+    data->entities.parent.push_back(parentId);
 
     data->renderComponents.add();
+
+    data->transformComponents.add(vec3f(0.0f));
+    data->lightComponents.add(vec3f(0.0f, 1.0f, 0.0f));
+    data->lightComponents.used[data->lightComponents.size - 1] = false;
+  }
+
+  void Reignite::ComponentSystem::addEntityLight() {
+
+    addEntityLight(-1);
+  }
+
+  void Reignite::ComponentSystem::addEntityLight(s32 parentId) {
+
+    data->entities.entity.push_back(data->entities.size++); // add entity and increment count
+    data->entities.parent.push_back(parentId);
+
+    data->renderComponents.add();
+    data->renderComponents.used[data->renderComponents.size - 1] = false;
+
+    data->transformComponents.add(vec3f(0.0f));
+    data->lightComponents.add(vec3f(0.0f, 0.0f, 1.0f));
   }
 
   Camera* Reignite::ComponentSystem::camera() {
@@ -118,10 +147,35 @@ namespace Reignite {
     data->camera.setPerspective(60.0f, (float)state->window->width() / state->window->height(), 0.1f, 256.0f);
     data->camera.updateViewMatrix();
 
-    addEntity();
-    addEntity();
+    addEntityRender();
+    addEntityRender();
 
-    data->transformComponents.position[0] = vec3f(0.0f, 1.0f, 0.0f);
+    data->transformComponents.position[1] = vec3f(0.0f, 1.0f, 0.0f);
+
+    data->renderComponents.geometry[0] = 0;
+    data->renderComponents.material[0] = 1;
+
+    data->renderComponents.geometry[1] = 2;
+    data->renderComponents.material[1] = 0;
+
+    addEntityLight();
+    addEntityLight();
+    addEntityLight();
+
+    data->transformComponents.position[2] = vec4f(-14.0f, 0.5f, 15.0f, 1.0f);
+    data->renderComponents.geometry[2] = 3;
+    data->lightComponents.target[2] = vec4f(-2.0f, 0.0f, 0.0f, 0.0f);
+    data->lightComponents.color[2] = vec4f(0.0f, 1.0f, 0.0f, 0.0f);
+
+    data->transformComponents.position[3] = vec4f(14.0f, 4.0f, 12.0f, 1.0f);
+    data->renderComponents.geometry[3] = 3;
+    data->lightComponents.target[3] = vec4f(2.0f, 0.0f, 0.0f, 0.0f);
+    data->lightComponents.color[3] = vec4f(1.0f, 0.0f, 0.0f, 0.0f);
+
+    data->transformComponents.position[4] = vec4f(0.0f, 10.0f, 4.0f, 1.0f);
+    data->renderComponents.geometry[4] = 3;
+    data->lightComponents.target[4] = vec4f(0.0f, 0.0f, 0.0f, 0.0f);
+    data->lightComponents.color[4] = vec4f(0.0f, 0.0f, 1.0f, 0.0f);
 
     update();
   }

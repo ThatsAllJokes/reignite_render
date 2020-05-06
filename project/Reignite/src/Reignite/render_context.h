@@ -37,10 +37,9 @@ namespace Reignite {
 
     u32 createGeometryResource(GeometryEnum geometry, std::string path = "");
     u32 createMaterialResource();
-    u32 createTexture();
-    u32 createFrameBuffer();
 
-    void setRenderInfo();
+    void initRenderState();
+    void updateRenderState();
 
     void buildDeferredCommands();
     void buildCommandBuffers();
