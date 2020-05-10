@@ -6,11 +6,14 @@ layout (location = 2) in vec2 inUV;
 layout (location = 3) in vec3 inColor;
 layout (location = 4) in vec3 inTangent;
 
-layout (binding = 0) uniform UBO 
-{
+layout (binding = 0, set = 1) uniform UBOView {
 	mat4 projection;
-	mat4 model;
-} ubo;
+	mat4 view;
+} view;
+
+layout (binding = 0, set = 1) uniform Models {
+  mat4 matrix;
+} model;
 
 layout (location = 0) out vec3 outUV;
 
@@ -22,5 +25,5 @@ out gl_PerVertex
 void main() 
 {
 	outUV = vec3(inUV.st, inNormal.z);
-	gl_Position = ubo.projection * ubo.model * vec4(inPos.xyz, 1.0);
+	gl_Position = view.projection * model.matrix * vec4(inPos.xyz, 1.0);
 }

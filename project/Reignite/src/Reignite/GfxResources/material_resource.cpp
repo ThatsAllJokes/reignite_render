@@ -14,7 +14,7 @@ void Reignite::MaterialResource::init() {
   params.metallic = 1.0f;
 
   vulkanState = nullptr;
-  uboBasics = {};
+  //uboBasics = {};
   colorMap = {};
   normalMap = {};
   roughness = {};
@@ -25,7 +25,7 @@ void Reignite::MaterialResource::init() {
 void Reignite::MaterialResource::destroy() {
 
   vulkanState = nullptr;
-  uboBasics.destroy();
+  //uboBasics.destroy();
   colorMap.destroy();
   normalMap.destroy();
   roughness.destroy();
@@ -41,21 +41,18 @@ void Reignite::MaterialResource::update(VkDescriptorPool descriptorPool, VkDescr
   VK_CHECK(vkAllocateDescriptorSets(vulkanState->device, &allocInfo, &descriptorSet));
   std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
 
-    // Binding 0: Vertex shader uniform buffer
-    vk::initializers::WriteDescriptorSet(descriptorSet,
-      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uboBasics.descriptor),
     // Binding 1: Color map
     vk::initializers::WriteDescriptorSet(descriptorSet,
-      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &colorMap.descriptor),
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &colorMap.descriptor),
     // Binding 2: Normal map
     vk::initializers::WriteDescriptorSet(descriptorSet,
-      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &normalMap.descriptor),
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &normalMap.descriptor),
     // Binding 3: Roughness map
     vk::initializers::WriteDescriptorSet(descriptorSet,
-      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &roughness.descriptor),
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &roughness.descriptor),
     // Binding 4: Metallic map
     vk::initializers::WriteDescriptorSet(descriptorSet,
-      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &metallic.descriptor)
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &metallic.descriptor)
   };
 
   vkUpdateDescriptorSets(vulkanState->device, static_cast<u32>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);

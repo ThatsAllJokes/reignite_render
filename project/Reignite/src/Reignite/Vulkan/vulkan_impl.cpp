@@ -148,7 +148,7 @@ VkResult CreateDescriptorPool(VkDevice device, VkDescriptorPool& descriptorPool,
     vk::initializers::DescriptorPoolCreateInfo(
       static_cast<u32>(poolSizes.size()), 
       poolSizes.data(), 
-      5);
+      20);
 
   return vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool);
 }

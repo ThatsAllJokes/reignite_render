@@ -1,21 +1,11 @@
 #version 450
+#extension GL_KHR_vulkan_glsl : enable
 
-layout (binding = 1) uniform sampler2D samplerposition;
-layout (binding = 2) uniform sampler2D samplerNormal;
-layout (binding = 3) uniform sampler2D samplerAlbedo;
-layout (binding = 4) uniform sampler2D samplerRoughness;
-layout (binding = 5) uniform sampler2D samplerMetallic;
-
-layout (binding = 7) uniform sampler2DArray samplerShadowMap;
-
-layout (location = 0) in vec2 inUV;
-
-layout (location = 0) out vec4 outFragcolor;
-
-#define LIGHT_COUNT 3
-#define SHADOW_FACTOR 0.25
-#define AMBIENT_LIGHT 0.6
-#define USE_PCF
+layout (binding = 1, set = 0) uniform sampler2D samplerposition;
+layout (binding = 2, set = 0) uniform sampler2D samplerNormal;
+layout (binding = 3, set = 0) uniform sampler2D samplerAlbedo;
+layout (binding = 4, set = 0) uniform sampler2D samplerRoughness;
+layout (binding = 5, set = 0) uniform sampler2D samplerMetallic;
 
 struct Light {
 	vec4 position;
@@ -25,11 +15,24 @@ struct Light {
   mat4 view;
 };
 
-layout (binding = 6) uniform UBO {
-	Light lights[3];
+layout (binding = 6, set = 0) uniform UBO {
 	vec4 viewPos;
+	Light lights[3];
+  int numbLights;
   int useShadows;
 } ubo;
+
+layout (binding = 7, set = 0) uniform sampler2DArray samplerShadowMap;
+
+layout (location = 0) in vec2 inUV;
+
+layout (location = 0) out vec4 outFragcolor;
+
+//#define LIGHT_COUNT 3
+#define SHADOW_FACTOR 0.25
+#define AMBIENT_LIGHT 0.6
+#define USE_PCF
+
 
 struct PushcConstants {
   float r;
@@ -167,7 +170,7 @@ void main() {
 	float lightCosOuterAngle = cos(radians(25.0));
 	float lightRange = 100.0;
 
-	for(int i = 0; i < LIGHT_COUNT; ++i) {
+	for(int i = 0; i < ubo.numbLights; ++i) {
 
 		vec3 L = normalize(ubo.lights[i].position.xyz - fragPos); // Vector to light
     vec3 H = normalize (V + L);
@@ -197,7 +200,7 @@ void main() {
   
   if(ubo.useShadows > 0) {
 
-    for(int i = 0; i < LIGHT_COUNT; ++i) {
+    for(int i = 0; i < ubo.numbLights; ++i) {
       
       vec4 shadowClip = ubo.lights[i].view * vec4(fragPos, 1.0);
 

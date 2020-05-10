@@ -31,7 +31,10 @@ namespace Reignite {
 
     vk::VulkanState* vulkanState;
 
-    vk::Buffer uboBasics;
+    VkPipeline pipeline;
+    VkPipelineLayout pipelineLayout;
+
+    //vk::Buffer uboBasics;
     vk::Texture2D colorMap;
     vk::Texture2D normalMap;
     vk::Texture2D roughness;

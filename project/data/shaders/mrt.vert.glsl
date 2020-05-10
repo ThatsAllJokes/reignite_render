@@ -1,5 +1,5 @@
 #version 450
-//#extension GL_KHR_vulkan_glsl : enable
+#extension GL_KHR_vulkan_glsl : enable
 
 layout (location = 0) in vec4 inPos;
 layout (location = 1) in vec3 inNormal;
@@ -7,12 +7,14 @@ layout (location = 2) in vec2 inUV;
 layout (location = 3) in vec3 inColor;
 layout (location = 4) in vec3 inTangent;
 
-layout (binding = 0) uniform UBO {
+layout (binding = 0, set = 1) uniform UBOView {
 	mat4 projection;
-	mat4 model;
 	mat4 view;
-	vec4 instancePos[3];
-} ubo;
+} view;
+
+layout (binding = 0, set = 2) uniform Models {
+  mat4 matrix;
+} model;
 
 layout (location = 0) out vec3 outNormal;
 layout (location = 1) out vec2 outUV;
@@ -26,20 +28,20 @@ out gl_PerVertex {
 
 void main() {
 
-	vec4 tmpPos = inPos + ubo.instancePos[gl_InstanceIndex];
+	vec4 tmpPos = inPos; // + view.instancePos[gl_InstanceIndex];
 
-	gl_Position = ubo.projection * ubo.view * ubo.model * tmpPos;
+	gl_Position = view.projection * view.view * model.matrix * tmpPos;
 	
 	outUV = inUV;
 	outUV.t = 1.0 - outUV.t;
 
 	// Vertex position in world space
-	outWorldPos = vec3(ubo.model * tmpPos);
+	outWorldPos = vec3(model.matrix * tmpPos);
 	// GL to Vulkan coord space
 	outWorldPos.y = -outWorldPos.y;
 	
 	// Normal in world space
-	mat3 mNormal = transpose(inverse(mat3(ubo.model)));
+	mat3 mNormal = transpose(inverse(mat3(model.matrix)));
 	outNormal = mNormal * normalize(inNormal);	
 	outTangent = mNormal * normalize(inTangent);
 	

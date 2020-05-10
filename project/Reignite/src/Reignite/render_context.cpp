@@ -26,6 +26,7 @@ namespace Reignite {
     RenderContextParams params;
     std::vector<GeometryResource> geometries;
     std::vector<MaterialResource> materials;
+    std::vector<vk::Texture> textures;
 
     // Render state
     bool render_should_close = false;
@@ -140,12 +141,18 @@ namespace Reignite {
     } vertices;
 
     struct {
+      mat4f model_matrix;
+    } uboModelVS;
+
+    struct {
       mat4f projection;
       mat4f model;
+    } uboVS;
+
+    struct {
+      mat4f projection;
       mat4f view;
-      vec4f instancePos[3]; // TODO: Check current use
-      int layer; // TODO: Check current use
-    } uboVS, uboOffscreenVS;
+    } uboOffscreenVS;
 
     struct {
       mat4f mvp[3];
@@ -172,7 +179,10 @@ namespace Reignite {
     } uboFragmentLights;
 
     struct {
+      std::vector<vk::Buffer> perObjectModels;
+      vk::Buffer vsGlobalViewData;
       vk::Buffer vsFullScreen;
+      vk::Buffer vsScreenModel;
       vk::Buffer fsLights;
       vk::Buffer skybox;
       vk::Buffer gsShadows;
@@ -189,17 +199,24 @@ namespace Reignite {
     struct {
       VkPipelineLayout deferred;
       VkPipelineLayout offscreen;
+      VkPipelineLayout shadows;
       VkPipelineLayout skybox;
     } pipelineLayouts;
 
     struct {
-      VkDescriptorSet model;
-      VkDescriptorSet floor;
+      std::vector<VkDescriptorSet> perObjectModels;
+      VkDescriptorSet globalViewData;
+      VkDescriptorSet screenModel;
       VkDescriptorSet shadow;
       VkDescriptorSet skybox;
     } descriptorSets;
 
     VkDescriptorSet descriptorSet;
+    
+    VkDescriptorSetLayout modelDescriptorSetLayout;
+    VkDescriptorSetLayout viewDescriptorSetLayout;
+    VkDescriptorSetLayout shadowDescriptorSetLayout;
+
     VkDescriptorSetLayout descriptorSetLayout;
     VkDescriptorSetLayout skyboxDescriptorSetLayout;
 
@@ -279,13 +296,6 @@ namespace Reignite {
     newMaterial.init();
 
     newMaterial.vulkanState = data->vulkanState;
-
-    // Create and Map uniform buffer
-    VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      sizeof(data->uboOffscreenVS), &newMaterial.uboBasics));
-
-    VK_CHECK(newMaterial.uboBasics.map());
 
     data->materials.push_back(newMaterial);
     return static_cast<u32>(data->materials.size() - 1);
@@ -427,7 +437,12 @@ namespace Reignite {
 
       u32 geoIndex = data->renderData.geoId[i];
 
-      vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->descriptorSets.shadow, 0, NULL);
+      std::array<VkDescriptorSet, 2> shadowDescSets = {
+        data->descriptorSets.perObjectModels[i],
+        data->descriptorSets.shadow,
+      };
+
+      vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.shadows, 0, 2, shadowDescSets.data(), 0, NULL);
       vkCmdBindVertexBuffers(data->offScreenCmdBuffer, /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->geometries[geoIndex].vertexBuffer.buffer, offsets);
       vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[geoIndex].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
       vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[geoIndex].indices.size(), 1, 0, 0, 0);
@@ -480,7 +495,14 @@ namespace Reignite {
       u32 matIndex = data->renderData.matId[i];
       u32 geoIndex = data->renderData.geoId[i];
 
-      vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 1, &data->materials[matIndex].descriptorSet, 0, NULL);
+      std::array<VkDescriptorSet, 3> renderDescSets = {
+        data->materials[matIndex].descriptorSet,
+        data->descriptorSets.globalViewData,
+        data->descriptorSets.perObjectModels[i],
+      };
+
+      vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.offscreen, 0, 3, renderDescSets.data(), 0, NULL);
+
       vkCmdBindVertexBuffers(data->offScreenCmdBuffer, 0, 1, &data->geometries[geoIndex].vertexBuffer.buffer, offsets2);
       vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[geoIndex].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
       vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[geoIndex].indices.size(), 1, 0, 0, 0);
@@ -526,7 +548,12 @@ namespace Reignite {
 
       if (data->deferred_debug_display) {
 
-        vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.deferred, 0, 1, &data->descriptorSet, 0, NULL);
+        std::array<VkDescriptorSet, 2> descSets = {
+          data->descriptorSet,
+          data->descriptorSets.screenModel
+        };
+
+        vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.deferred, 0, 2, descSets.data(), 0, NULL);
         vkCmdBindPipeline(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.debug);
         vkCmdBindVertexBuffers(data->commandBuffers[i], /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->tmp_vertices.buffer, offsets);
         vkCmdBindIndexBuffer(data->commandBuffers[i], data->tmp_indices.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -703,10 +730,14 @@ namespace Reignite {
 
     data->uboVS.model = mat4f(1.0f);
     memcpy(data->uniformBuffers.vsFullScreen.mapped, &data->uboVS, sizeof(data->uboVS));
+
+    data->uboModelVS.model_matrix = mat4f(1.0f);
+    memcpy(data->uniformBuffers.vsScreenModel.mapped, &data->uboModelVS, sizeof(data->uboModelVS));
   }
    
   void RenderContext::updateUniformBufferDeferredMatrices() {
 
+    // Skybox data
     mat4f viewMatrix = glm::mat4(1.0f);
     data->skyboxUboVS.projection = glm::perspective(glm::radians(60.0f), (float)state->window->width() / (float)state->window->height(), 0.001f, 256.0f);
 
@@ -718,15 +749,27 @@ namespace Reignite {
 
     memcpy(data->uniformBuffers.skybox.mapped, &data->skyboxUboVS, sizeof(data->skyboxUboVS));
 
+    // Camera data
     for (u32 i = 0; i < data->renderData.size; ++i) {
 
       u32 matIndex = data->renderData.matId[i];
 
       data->uboOffscreenVS.projection = data->projection;
       data->uboOffscreenVS.view = data->view;
-      data->uboOffscreenVS.model = data->renderData.model[i];
 
-      memcpy(data->materials[matIndex].uboBasics.mapped, &data->uboOffscreenVS, sizeof(data->uboOffscreenVS));
+      //memcpy(data->materials[matIndex].uboBasics.mapped, &data->uboOffscreenVS, sizeof(data->uboOffscreenVS));
+    }
+
+    memcpy(data->uniformBuffers.vsGlobalViewData.mapped, &data->uboOffscreenVS, sizeof(data->uboOffscreenVS));
+
+    // Per-object data
+    for (u32 i = 0; i < data->renderData.size; ++i) {
+
+      u32 matIndex = data->renderData.matId[i];
+
+      data->uboModelVS.model_matrix = data->renderData.model[i];
+
+      memcpy(data->uniformBuffers.perObjectModels[i].mapped, &data->uboModelVS, sizeof(data->uboModelVS));
     }
   }
 
@@ -756,8 +799,6 @@ namespace Reignite {
       data->uboShadowGS.mvp[i] = shadowProj * shadowView * shadowModel;
       data->uboFragmentLights.lights[i].view = data->uboShadowGS.mvp[i];
     }
-
-    memcpy(data->uboShadowGS.instancePos, data->uboOffscreenVS.instancePos, sizeof(data->uboOffscreenVS.instancePos));
 
     memcpy(data->uniformBuffers.gsShadows.mapped, &data->uboShadowGS, sizeof(data->uboShadowGS));
 
@@ -1019,6 +1060,8 @@ namespace Reignite {
       data->overlay.preparePipeline(data->pipelineCache, data->renderPass);
     }
     
+    initRenderState();
+
     // Deferred features initialization ->
 
     // Generate Quads
@@ -1143,17 +1186,28 @@ namespace Reignite {
       VK_CHECK(data->defFramebuffers.shadow->createRenderPass());
     }
 
-    // init lights // Done as a component in the future
-    {
-      //data->uboFragmentLights.lights[0] = { glm::vec4(-14.0f, 0.5f, 15.0f, 1.0f),  glm::vec4(-2.0f, 0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.5f, 0.5f, 0.0f) };
-      //data->uboFragmentLights.lights[1] = { glm::vec4(14.0f, 4.0f, 12.0f, 1.0f),   glm::vec4(2.0f, 0.0f, 0.0f, 0.0f),  glm::vec4(0.0f, 0.0f, 1.0f, 0.0f) };
-      //data->uboFragmentLights.lights[2] = { glm::vec4(0.0f, 10.0f, 4.0f, 1.0f),    glm::vec4(0.0f, 0.0f, 0.0f, 0.0f),  glm::vec4(1.0f, 1.0f, 1.0f, 0.0f) };
-    }
-
-
-
     // Prepare UniformBuffers
     {
+      if (data->uniformBuffers.perObjectModels.size() < data->renderData.size)
+        data->uniformBuffers.perObjectModels.resize(data->renderData.size);
+
+      for (u32 i = 0; i < data->renderData.size; ++i) {
+
+        VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+          sizeof(data->uboModelVS), &data->uniformBuffers.perObjectModels[i]));
+
+        VK_CHECK(data->uniformBuffers.perObjectModels[i].map());
+      }
+
+      VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        sizeof(data->uboOffscreenVS), &data->uniformBuffers.vsGlobalViewData));
+
+      VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        sizeof(data->uboModelVS), &data->uniformBuffers.vsScreenModel));
+
       VK_CHECK(data->vulkanState->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         sizeof(data->uboVS), &data->uniformBuffers.vsFullScreen));
@@ -1170,17 +1224,15 @@ namespace Reignite {
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         sizeof(data->skyboxUboVS), &data->uniformBuffers.skybox));
 
+      VK_CHECK(data->uniformBuffers.vsGlobalViewData.map());
+      VK_CHECK(data->uniformBuffers.vsScreenModel.map());
       VK_CHECK(data->uniformBuffers.vsFullScreen.map());
       VK_CHECK(data->uniformBuffers.fsLights.map());
       VK_CHECK(data->uniformBuffers.gsShadows.map());
       VK_CHECK(data->uniformBuffers.skybox.map());
 
-      data->uboOffscreenVS.instancePos[0] = glm::vec4(0.0f);
-      data->uboOffscreenVS.instancePos[1] = glm::vec4(-4.0f, 0.0, -4.0f, 0.0f);
-      data->uboOffscreenVS.instancePos[2] = glm::vec4(4.0f, 0.0, -4.0f, 0.0f);
-
-      data->uboOffscreenVS.instancePos[1] = glm::vec4(-7.0f, 0.0, -4.0f, 0.0f);
-      data->uboOffscreenVS.instancePos[2] = glm::vec4(4.0f, 0.0, -6.0f, 0.0f);
+      //data->uboOffscreenVS.instancePos[1] = glm::vec4(-7.0f, 0.0, -4.0f, 0.0f);
+      //data->uboOffscreenVS.instancePos[2] = glm::vec4(4.0f, 0.0, -6.0f, 0.0f);
 
       updateUniformBuffersScreen();
       updateUniformBufferDeferredLights();
@@ -1188,48 +1240,61 @@ namespace Reignite {
     
     // Setup DescriptorSetLayout
     {
-      std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings =
-      {
-        // Binding 0 : Vertex shader uniform buffer
-        vk::initializers::DescriptorSetLayoutBinding(
-          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT,
-          0),
+      std::vector<VkDescriptorSetLayoutBinding> modelSetLayoutBindings = {
+      
+        vk::initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT, 0),
+      };
+
+      VkDescriptorSetLayoutCreateInfo modelDescriptorSetLayoutCI = vk::initializers::DescriptorSetLayoutCreateInfo(
+        modelSetLayoutBindings.data(), static_cast<u32>(modelSetLayoutBindings.size()));
+
+      // Per-object model set layout
+      VK_CHECK(vkCreateDescriptorSetLayout(data->device, &modelDescriptorSetLayoutCI, nullptr, &data->modelDescriptorSetLayout));
+
+      // View/Proj data set layout
+      VK_CHECK(vkCreateDescriptorSetLayout(data->device, &modelDescriptorSetLayoutCI, nullptr, &data->viewDescriptorSetLayout));
+
+      // Shadow data set layout
+      VK_CHECK(vkCreateDescriptorSetLayout(data->device, &modelDescriptorSetLayoutCI, nullptr, &data->shadowDescriptorSetLayout));
+
+      std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
+
         // Binding 1 : Position texture target / Scene colormap
         vk::initializers::DescriptorSetLayoutBinding(
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           VK_SHADER_STAGE_FRAGMENT_BIT,
-          1),
+          0),
         // Binding 2 : Normals texture target
         vk::initializers::DescriptorSetLayoutBinding(
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           VK_SHADER_STAGE_FRAGMENT_BIT,
-          2),
+          1),
         // Binding 3 : Albedo texture target
         vk::initializers::DescriptorSetLayoutBinding(
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           VK_SHADER_STAGE_FRAGMENT_BIT,
-          3),
+          2),
         // Binding 4 : Roughness texture
         vk::initializers::DescriptorSetLayoutBinding(
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           VK_SHADER_STAGE_FRAGMENT_BIT,
-          4),
+          3),
         // Binding 5 : Metalllic texture
         vk::initializers::DescriptorSetLayoutBinding(
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           VK_SHADER_STAGE_FRAGMENT_BIT,
-          5),
+          4),
         // Binding 6 : Fragment shader uniform buffer
         vk::initializers::DescriptorSetLayoutBinding(
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           VK_SHADER_STAGE_FRAGMENT_BIT,
-          6),
+          5),
         // Binding 7 : Shadow map
         vk::initializers::DescriptorSetLayoutBinding(
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
           VK_SHADER_STAGE_FRAGMENT_BIT,
-          7),
+          6),
       };
 
       VkDescriptorSetLayoutCreateInfo descriptorLayout =
@@ -1239,11 +1304,32 @@ namespace Reignite {
 
       VK_CHECK(vkCreateDescriptorSetLayout(data->device, &descriptorLayout, nullptr, &data->descriptorSetLayout));
 
+      std::array<VkDescriptorSetLayout, 2> descSetLayouts = {
+        data->descriptorSetLayout, data->modelDescriptorSetLayout,
+      };
+
       VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo =
-        vk::initializers::PipelineLayoutCreateInfo(&data->descriptorSetLayout, 1);
+        vk::initializers::PipelineLayoutCreateInfo(descSetLayouts.data(), 2);
 
       VK_CHECK(vkCreatePipelineLayout(data->device, &pPipelineLayoutCreateInfo, nullptr, &data->pipelineLayouts.deferred));
+
+      std::array<VkDescriptorSetLayout, 3> descSetLayouts2 = {
+        data->descriptorSetLayout, data->viewDescriptorSetLayout, data->modelDescriptorSetLayout,
+      };
+
+      pPipelineLayoutCreateInfo =
+        vk::initializers::PipelineLayoutCreateInfo(descSetLayouts2.data(), 3);
+      
       VK_CHECK(vkCreatePipelineLayout(data->device, &pPipelineLayoutCreateInfo, nullptr, &data->pipelineLayouts.offscreen));
+
+      // Shadow pipeline layout
+      descSetLayouts = {
+        data->modelDescriptorSetLayout, data->shadowDescriptorSetLayout,
+      };
+
+      pPipelineLayoutCreateInfo = vk::initializers::PipelineLayoutCreateInfo(descSetLayouts.data(), 2);
+
+      VK_CHECK(vkCreatePipelineLayout(data->device, &pPipelineLayoutCreateInfo, nullptr, &data->pipelineLayouts.shadows));
     
       // skybox
       std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings2 = {
@@ -1378,7 +1464,7 @@ namespace Reignite {
 
       VkGraphicsPipelineCreateInfo pipelineCreateInfo =
         vk::initializers::GraphicsPipelineCreateInfo(
-          data->pipelineLayouts.deferred,
+          data->pipelineLayouts.shadows,
           data->renderPass,
           0);
 
@@ -1424,7 +1510,7 @@ namespace Reignite {
     createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/geosphere.obj");
     createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/box.obj");
     createGeometryResource(kGeometryEnum_Terrain);
-    createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/bulb.obj");
+    //createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/bulb.obj");
 
     createMaterialResource();
     createMaterialResource();
@@ -1473,41 +1559,86 @@ namespace Reignite {
       VK_CHECK(vkAllocateDescriptorSets(data->device, &allocInfo, &data->descriptorSet));
 
       std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
-        // Binding 0 : Vertex shader uniform buffer
-        vk::initializers::WriteDescriptorSet(data->descriptorSet,
-          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &data->uniformBuffers.vsFullScreen.descriptor),
         // Binding 1 : Position texture target
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &texDescriptorPosition),
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &texDescriptorPosition),
         // Binding 2 : Normals texture target
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &texDescriptorNormal),
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &texDescriptorNormal),
         // Binding 3 : Albedo texture target
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &texDescriptorAlbedo),
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &texDescriptorAlbedo),
         // Binding 4 : Roughness texture target
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &texDescriptorRoughness),
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &texDescriptorRoughness),
         // Binding 5 : metallic texture target
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 5, &texDescriptorMetallic),
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &texDescriptorMetallic),
         // Binding 6 : Fragment shader uniform buffer
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
-          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 6, &data->uniformBuffers.fsLights.descriptor),
+          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5, &data->uniformBuffers.fsLights.descriptor),
         // Binding 7 : Shadow map
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
-          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 7, &texDescriptorShadowMap),
+          VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6, &texDescriptorShadowMap),
       };
 
-      vkUpdateDescriptorSets(data->device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
+      vkUpdateDescriptorSets(data->device, static_cast<u32>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
+
+      // Per-Object descriptor sets
+      if (data->descriptorSets.perObjectModels.size() < data->renderData.size)
+        data->descriptorSets.perObjectModels.resize(data->renderData.size);
+      
+      VkDescriptorSetAllocateInfo modelAllocInfo =
+        vk::initializers::DescriptorSetAllocateInfo(
+          data->descriptorPool, &data->modelDescriptorSetLayout, 1);
+
+      std::vector<VkWriteDescriptorSet> modelWriteDescSet = {};
+      for (u32 i = 0; i < data->renderData.size; ++i) {
+
+        VK_CHECK(vkAllocateDescriptorSets(data->device, &modelAllocInfo, &data->descriptorSets.perObjectModels[i]));
+
+        modelWriteDescSet = {
+          vk::initializers::WriteDescriptorSet(data->descriptorSets.perObjectModels[i],
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &data->uniformBuffers.perObjectModels[i].descriptor),
+        };
+
+        vkUpdateDescriptorSets(data->device, static_cast<u32>(modelWriteDescSet.size()), modelWriteDescSet.data(), 0, NULL);
+      }
+
+      // View data descriptor set
+      VkDescriptorSetAllocateInfo viewAllocInfo =
+        vk::initializers::DescriptorSetAllocateInfo(
+          data->descriptorPool, &data->viewDescriptorSetLayout, 1);
+
+      VK_CHECK(vkAllocateDescriptorSets(data->device, &viewAllocInfo, &data->descriptorSets.globalViewData));
+
+      modelWriteDescSet = {
+        vk::initializers::WriteDescriptorSet(data->descriptorSets.globalViewData,
+          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &data->uniformBuffers.vsGlobalViewData.descriptor),
+      };
+
+      vkUpdateDescriptorSets(data->device, static_cast<u32>(modelWriteDescSet.size()), modelWriteDescSet.data(), 0, NULL);
+
+      // Screen model descriptor set
+      VK_CHECK(vkAllocateDescriptorSets(data->device, &modelAllocInfo, &data->descriptorSets.screenModel));
+
+      modelWriteDescSet = {
+        vk::initializers::WriteDescriptorSet(data->descriptorSets.screenModel,
+          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &data->uniformBuffers.vsScreenModel.descriptor),
+      };
+
+      vkUpdateDescriptorSets(data->device, static_cast<u32>(modelWriteDescSet.size()), modelWriteDescSet.data(), 0, NULL);
 
       // Shadow mapping descriptor set
+      allocInfo = vk::initializers::DescriptorSetAllocateInfo(
+        data->descriptorPool, &data->shadowDescriptorSetLayout, 1);
+
       VK_CHECK(vkAllocateDescriptorSets(data->device, &allocInfo, &data->descriptorSets.shadow));
       writeDescriptorSets = {
         vk::initializers::WriteDescriptorSet(data->descriptorSets.shadow,
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &data->uniformBuffers.gsShadows.descriptor),
       };
-      vkUpdateDescriptorSets(data->device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
+      vkUpdateDescriptorSets(data->device, static_cast<u32>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
 
       // Sky box descriptor set
       allocInfo = vk::initializers::DescriptorSetAllocateInfo(
@@ -1539,7 +1670,6 @@ namespace Reignite {
       vkUpdateDescriptorSets(data->device, (u32)writeDescriptorSets.size(), writeDescriptorSets.data(), 0, NULL);
     }
 
-    initRenderState();
     buildCommandBuffers();
     buildDeferredCommands();
   }

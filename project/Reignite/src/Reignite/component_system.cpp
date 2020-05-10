@@ -94,7 +94,7 @@ namespace Reignite {
     data->entities.parent.push_back(parentId);
 
     data->renderComponents.add();
-    data->renderComponents.used[data->renderComponents.size - 1] = false;
+    //data->renderComponents.used[data->renderComponents.size - 1] = false;
 
     data->transformComponents.add(vec3f(0.0f));
     data->lightComponents.add(vec3f(0.0f, 0.0f, 1.0f));
@@ -162,20 +162,20 @@ namespace Reignite {
     addEntityLight();
     addEntityLight();
 
-    data->transformComponents.position[2] = vec4f(-14.0f, 0.5f, 15.0f, 1.0f);
-    data->renderComponents.geometry[2] = 3;
-    data->lightComponents.target[2] = vec4f(-2.0f, 0.0f, 0.0f, 0.0f);
-    data->lightComponents.color[2] = vec4f(0.0f, 1.0f, 0.0f, 0.0f);
+    data->transformComponents.position[2] = vec4f(0.0f, -4.0f, 0.0f, 1.0f);
+    data->renderComponents.geometry[2] = 0;
+    data->lightComponents.target[2] = vec4f(2.0f, 1.0f, 0.0f, 0.0f);
+    data->lightComponents.color[2] = vec4f(1.0f, 1.0f, 1.0f, 1.0f);
 
-    data->transformComponents.position[3] = vec4f(14.0f, 4.0f, 12.0f, 1.0f);
-    data->renderComponents.geometry[3] = 3;
+    data->transformComponents.position[3] = vec4f(7.0f, -4.0f, -5.0f, 1.0f);
+    data->renderComponents.geometry[3] = 0;
     data->lightComponents.target[3] = vec4f(2.0f, 0.0f, 0.0f, 0.0f);
-    data->lightComponents.color[3] = vec4f(1.0f, 0.0f, 0.0f, 0.0f);
+    data->lightComponents.color[3] = vec4f(1.0f, 1.0f, 0.0f, 1.0f);
 
-    data->transformComponents.position[4] = vec4f(0.0f, 10.0f, 4.0f, 1.0f);
-    data->renderComponents.geometry[4] = 3;
+    data->transformComponents.position[4] = vec4f(0.0f, -5.0f, -2.0f, 1.0f);
+    data->renderComponents.geometry[4] = 0;
     data->lightComponents.target[4] = vec4f(0.0f, 0.0f, 0.0f, 0.0f);
-    data->lightComponents.color[4] = vec4f(0.0f, 0.0f, 1.0f, 0.0f);
+    data->lightComponents.color[4] = vec4f(1.0f, 0.0f, 0.0f, 1.0f);
 
     update();
   }
