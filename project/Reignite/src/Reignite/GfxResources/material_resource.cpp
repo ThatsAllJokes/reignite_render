@@ -14,7 +14,6 @@ void Reignite::MaterialResource::init() {
   params.metallic = 1.0f;
 
   vulkanState = nullptr;
-  //uboBasics = {};
   colorMap = {};
   normalMap = {};
   roughness = {};
@@ -25,7 +24,6 @@ void Reignite::MaterialResource::init() {
 void Reignite::MaterialResource::destroy() {
 
   vulkanState = nullptr;
-  //uboBasics.destroy();
   colorMap.destroy();
   normalMap.destroy();
   roughness.destroy();

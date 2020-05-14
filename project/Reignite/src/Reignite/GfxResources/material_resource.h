@@ -31,16 +31,18 @@ namespace Reignite {
 
     vk::VulkanState* vulkanState;
 
-    VkPipeline pipeline;
+    VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
+    VkPipeline pipeline;
 
-    //vk::Buffer uboBasics;
+    VkDescriptorSet descriptorSet;
+
+    std::vector<s32> textures;
+
     vk::Texture2D colorMap;
     vk::Texture2D normalMap;
     vk::Texture2D roughness;
     vk::Texture2D metallic;
-
-    VkDescriptorSet descriptorSet;
   };
 
 } // end of Reignite namespace

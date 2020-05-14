@@ -193,14 +193,12 @@ namespace Reignite {
       VkPipeline offscreen;
       VkPipeline debug;
       VkPipeline shadowPass;
-      VkPipeline skybox;
     } pipelines;
 
     struct {
       VkPipelineLayout deferred;
       VkPipelineLayout offscreen;
       VkPipelineLayout shadows;
-      VkPipelineLayout skybox;
     } pipelineLayouts;
 
     struct {
@@ -208,7 +206,6 @@ namespace Reignite {
       VkDescriptorSet globalViewData;
       VkDescriptorSet screenModel;
       VkDescriptorSet shadow;
-      VkDescriptorSet skybox;
     } descriptorSets;
 
     VkDescriptorSet descriptorSet;
@@ -218,7 +215,6 @@ namespace Reignite {
     VkDescriptorSetLayout shadowDescriptorSetLayout;
 
     VkDescriptorSetLayout descriptorSetLayout;
-    VkDescriptorSetLayout skyboxDescriptorSetLayout;
 
     struct {
       vk::Framebuffer* deferred;
@@ -228,9 +224,11 @@ namespace Reignite {
     VkCommandBuffer offScreenCmdBuffer = VK_NULL_HANDLE;
     VkSemaphore offScreenSemaphore = VK_NULL_HANDLE;
 
-    vk::Buffer tmp_vertices;
-    vk::Buffer tmp_indices;
-    u32 tmp_indexCount;
+    struct DebugQuad {
+      vk::Buffer vertices;
+      vk::Buffer indices;
+      u32 indexCount;
+    } debugQuad_Deferred;
 
     vk::Overlay overlay;
     vk::TextureCubeMap cubeMap;
@@ -481,10 +479,12 @@ namespace Reignite {
     // Skybox
     if (data->display_skybox) {
 
-      vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.skybox, 0, 1, &data->descriptorSets.skybox, 0, NULL);
+      vkCmdBindPipeline(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->materials[0].pipeline);
+      vkCmdBindDescriptorSets(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->materials[0].pipelineLayout, 0, 1, &data->materials[0].descriptorSet, 0, NULL);
+      
       vkCmdBindVertexBuffers(data->offScreenCmdBuffer, 0, 1, &data->geometries[1].vertexBuffer.buffer, offsets2);
       vkCmdBindIndexBuffer(data->offScreenCmdBuffer, data->geometries[1].indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-      vkCmdBindPipeline(data->offScreenCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.skybox);
+      
       vkCmdDrawIndexed(data->offScreenCmdBuffer, (u32)data->geometries[1].indices.size(), 1, 0, 0, 0);
     }
 
@@ -555,9 +555,9 @@ namespace Reignite {
 
         vkCmdBindDescriptorSets(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelineLayouts.deferred, 0, 2, descSets.data(), 0, NULL);
         vkCmdBindPipeline(data->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, data->pipelines.debug);
-        vkCmdBindVertexBuffers(data->commandBuffers[i], /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->tmp_vertices.buffer, offsets);
-        vkCmdBindIndexBuffer(data->commandBuffers[i], data->tmp_indices.buffer, 0, VK_INDEX_TYPE_UINT32);
-        vkCmdDrawIndexed(data->commandBuffers[i], data->tmp_indexCount, 1, 0, 0, 1);
+        vkCmdBindVertexBuffers(data->commandBuffers[i], /*VERTEX_BUFFER_BIND_ID*/0, 1, &data->debugQuad_Deferred.vertices.buffer, offsets);
+        vkCmdBindIndexBuffer(data->commandBuffers[i], data->debugQuad_Deferred.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+        vkCmdDrawIndexed(data->commandBuffers[i], data->debugQuad_Deferred.indexCount, 1, 0, 0, 1);
         // Move viewport to display final composition in lower right corner
         viewport.x = viewport.width * 0.5f;
         viewport.y = viewport.height * 0.5f;
@@ -833,6 +833,12 @@ namespace Reignite {
     data->materials[1].roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     data->materials[1].metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
     
+    data->materials[2].colorMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_albedo.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->materials[2].normalMap.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_normal.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->materials[2].roughness.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_roughness.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+    data->materials[2].metallic.loadFromFileSTB(Reignite::Tools::GetAssetPath() + "textures/TexturesCom_Metal_BronzePolished_1K_metallic.jpg", VK_FORMAT_R8G8B8A8_SRGB, data->device, data->physicalDevice, data->commandPool, data->queue);
+
+
 
     std::string filename;
     VkFormat format;
@@ -1064,54 +1070,9 @@ namespace Reignite {
 
     // Deferred features initialization ->
 
-    // Generate Quads
-    {
-      std::vector<Vertex> vertexBuffer;
-
-      float x = 0.0f;
-      float y = 0.0f;
-      for(u32 i = 0; i < 3; ++i) {
-    
-        vertexBuffer.push_back({ { x + 1.0f, y + 1.0f, 0.0f }, { 0.0f, 0.0f, (float)i }, { 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f } });
-        vertexBuffer.push_back({ { x,        y + 1.0f, 0.0f }, { 0.0f, 0.0f, (float)i }, { 0.0f, 1.0f }, { 1.0f, 1.0f, 1.0f } });
-        vertexBuffer.push_back({ { x,        y,        0.0f }, { 0.0f, 0.0f, (float)i }, { 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } });
-        vertexBuffer.push_back({ { x + 1.0f, y,        0.0f }, { 0.0f, 0.0f, (float)i }, { 1.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } });
-    
-        x += 1.0f;
-        if (x > 1.0f) {
-          x = 0.0f;
-          y += 1.0f;
-        }
-      }
-
-      VK_CHECK(data->vulkanState->createBuffer(
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        vertexBuffer.size() * sizeof(Vertex),
-        &data->tmp_vertices.buffer,
-        &data->tmp_vertices.memory,
-        vertexBuffer.data()));
-
-      std::vector<u32> indexBuffer = { 0, 1, 2, 2, 3, 0 };
-      for (u32 i = 0; i < 3; ++i) {
-
-        u32 indices[6] = { 0, 1, 2, 2, 3, 0 };
-        for (auto index : indices) {
-
-          indexBuffer.push_back(i * 4 + index);
-        }
-      }
-
-      data->tmp_indexCount = static_cast<uint32_t>(indexBuffer.size());
-
-      VK_CHECK(data->vulkanState->createBuffer(
-        VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        indexBuffer.size() * sizeof(uint32_t),
-        &data->tmp_indices.buffer,
-        &data->tmp_indices.memory,
-        indexBuffer.data()));
-    }
+    // Generate debug quads
+    GenerateDeferredDebugQuads(data->vulkanState, &data->debugQuad_Deferred.vertices, 
+      &data->debugQuad_Deferred.indices, data->debugQuad_Deferred.indexCount);
 
     // Setup Vertex Descriptions
     {
@@ -1238,6 +1199,21 @@ namespace Reignite {
       updateUniformBufferDeferredLights();
     }
     
+    // Initialize graphic resources
+    {
+      // Generate Engine Resources ->
+      createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/geosphere.obj");
+      createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/box.obj");
+      createGeometryResource(kGeometryEnum_Terrain);
+      //createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/bulb.obj");
+
+      createMaterialResource();
+      createMaterialResource();
+      createMaterialResource();
+      //createMaterialResource();
+      //createMaterialResource();
+    }
+
     // Setup DescriptorSetLayout
     {
       std::vector<VkDescriptorSetLayoutBinding> modelSetLayoutBindings = {
@@ -1332,33 +1308,27 @@ namespace Reignite {
       VK_CHECK(vkCreatePipelineLayout(data->device, &pPipelineLayoutCreateInfo, nullptr, &data->pipelineLayouts.shadows));
     
       // skybox
-      std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings2 = {
+      std::vector<VkDescriptorSetLayoutBinding> skyboxSetLayoutBindings = {
 
         // Binding 0 : Vertex shader uniform buffer
         vk::initializers::DescriptorSetLayoutBinding(
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          VK_SHADER_STAGE_VERTEX_BIT,
-          0),
+          VK_SHADER_STAGE_VERTEX_BIT, 0),
         // Binding 1 : Fragment shader image sampler
         vk::initializers::DescriptorSetLayoutBinding(
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-          VK_SHADER_STAGE_FRAGMENT_BIT,
-          1)
+          VK_SHADER_STAGE_FRAGMENT_BIT, 1)
       };
 
-      descriptorLayout =
-        vk::initializers::DescriptorSetLayoutCreateInfo(
-          setLayoutBindings2.data(),
-          (u32)setLayoutBindings2.size());
+      VkDescriptorSetLayoutCreateInfo skyboxDescSetLayoutCI = vk::initializers::DescriptorSetLayoutCreateInfo(
+          skyboxSetLayoutBindings.data(), static_cast<u32>(skyboxSetLayoutBindings.size()));
 
-      VK_CHECK(vkCreateDescriptorSetLayout(data->device, &descriptorLayout, nullptr, &data->skyboxDescriptorSetLayout));
+      VK_CHECK(vkCreateDescriptorSetLayout(data->device, &skyboxDescSetLayoutCI, nullptr, &data->materials[0].descriptorSetLayout));
 
-      pPipelineLayoutCreateInfo =
-        vk::initializers::PipelineLayoutCreateInfo(
-          &data->skyboxDescriptorSetLayout,
-          1);
+      VkPipelineLayoutCreateInfo skyboxPipelineLayoutCI =
+        vk::initializers::PipelineLayoutCreateInfo(&data->materials[0].descriptorSetLayout, 1);
 
-      VK_CHECK(vkCreatePipelineLayout(data->device, &pPipelineLayoutCreateInfo, nullptr, &data->pipelineLayouts.skybox));
+      VK_CHECK(vkCreatePipelineLayout(data->device, &skyboxPipelineLayoutCI, nullptr, &data->materials[0].pipelineLayout));
     }
 
     // Prepare Pipelines
@@ -1373,13 +1343,23 @@ namespace Reignite {
 
       VkPipelineVertexInputStateCreateInfo emptyInputState = vk::initializers::PipelineVertexInputStateCreateInfo();
 
-      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelineLayouts.deferred, data->renderPass,
-        "deferred_bp", data->pipelineCache, data->pipelines.deferred, emptyInputState, blendAttachmentState, 
-        depthStencilState, VK_FRONT_FACE_CLOCKWISE));
-      
-      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelineLayouts.deferred, data->renderPass,
-        "debug", data->pipelineCache, data->pipelines.debug, data->vertices.inputState, blendAttachmentState, 
-        depthStencilState, VK_FRONT_FACE_CLOCKWISE));
+      PipelineCreateInfo customPipelineCreateInfo;
+      customPipelineCreateInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+      customPipelineCreateInfo.blendAttachmentStates = blendAttachmentState;
+      customPipelineCreateInfo.filenames = { "deferred_pbr.vert", "deferred_pbr.frag" };
+      customPipelineCreateInfo.stages = { VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
+      customPipelineCreateInfo.pipelineLayout = data->pipelineLayouts.deferred;
+      customPipelineCreateInfo.renderPass = data->renderPass;
+      customPipelineCreateInfo.depthStencilState = depthStencilState;
+      customPipelineCreateInfo.vertexInputState = emptyInputState;
+      customPipelineCreateInfo.pipelineCache = data->pipelineCache;
+
+      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelines.deferred, customPipelineCreateInfo));
+
+      customPipelineCreateInfo.filenames = { "debug.vert", "debug.frag" };
+      customPipelineCreateInfo.vertexInputState = data->vertices.inputState;
+
+      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelines.debug, customPipelineCreateInfo));
 
       std::vector<VkPipelineColorBlendAttachmentState> blendAttachmentStates = {
         vk::initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE),
@@ -1389,9 +1369,12 @@ namespace Reignite {
         vk::initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE)
       };
 
-      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelineLayouts.offscreen, data->defFramebuffers.deferred->renderPass,
-        "mrt", data->pipelineCache, data->pipelines.offscreen, data->vertices.inputState, blendAttachmentStates, depthStencilState,
-        VK_FRONT_FACE_CLOCKWISE));
+      customPipelineCreateInfo.blendAttachmentStates = blendAttachmentStates;
+      customPipelineCreateInfo.filenames = { "mrt.vert", "mrt.frag" };
+      customPipelineCreateInfo.pipelineLayout = data->pipelineLayouts.offscreen;
+      customPipelineCreateInfo.renderPass = data->defFramebuffers.deferred->renderPass;
+
+      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelines.offscreen, customPipelineCreateInfo));
 
       // skybox
       depthStencilState = vk::initializers::PipelineDepthStencilStateCreateInfo(
@@ -1411,9 +1394,13 @@ namespace Reignite {
       vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputAttributes.size());
       vertexInputState.pVertexAttributeDescriptions = vertexInputAttributes.data();
 
-      VK_CHECK(CreateGraphicsPipeline(data->device, data->pipelineLayouts.skybox, data->defFramebuffers.deferred->renderPass,
-        "skybox", data->pipelineCache, data->pipelines.skybox, vertexInputState, blendAttachmentStates, depthStencilState,
-        VK_FRONT_FACE_COUNTER_CLOCKWISE));
+      customPipelineCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+      customPipelineCreateInfo.filenames = { "skybox.vert", "skybox.frag" };
+      customPipelineCreateInfo.pipelineLayout = data->materials[0].pipelineLayout;
+      customPipelineCreateInfo.depthStencilState = depthStencilState;
+      customPipelineCreateInfo.vertexInputState = vertexInputState;
+
+      VK_CHECK(CreateGraphicsPipeline(data->device, data->materials[0].pipeline, customPipelineCreateInfo));
 
       // Shadow mapping
       VkPipelineInputAssemblyStateCreateInfo inputAssemblyState =
@@ -1506,18 +1493,6 @@ namespace Reignite {
       VK_CHECK(CreateDescriptorPool(data->device, data->descriptorPool, poolSizes));
     }
 
-    // Generate Engine Resources ->
-    createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/geosphere.obj");
-    createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/box.obj");
-    createGeometryResource(kGeometryEnum_Terrain);
-    //createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/bulb.obj");
-
-    createMaterialResource();
-    createMaterialResource();
-    //createMaterialResource();
-    //createMaterialResource();
-    //createMaterialResource();
-
     // load resources
     loadResources();
 
@@ -1559,25 +1534,25 @@ namespace Reignite {
       VK_CHECK(vkAllocateDescriptorSets(data->device, &allocInfo, &data->descriptorSet));
 
       std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
-        // Binding 1 : Position texture target
+        // Binding 0 : Position texture target
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &texDescriptorPosition),
-        // Binding 2 : Normals texture target
+        // Binding 1 : Normals texture target
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &texDescriptorNormal),
-        // Binding 3 : Albedo texture target
+        // Binding 2 : Albedo texture target
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &texDescriptorAlbedo),
-        // Binding 4 : Roughness texture target
+        // Binding 3 : Roughness texture target
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &texDescriptorRoughness),
-        // Binding 5 : metallic texture target
+        // Binding 4 : metallic texture target
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &texDescriptorMetallic),
-        // Binding 6 : Fragment shader uniform buffer
+        // Binding 5 : Fragment shader uniform buffer
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5, &data->uniformBuffers.fsLights.descriptor),
-        // Binding 7 : Shadow map
+        // Binding 6 : Shadow map
         vk::initializers::WriteDescriptorSet(data->descriptorSet,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 6, &texDescriptorShadowMap),
       };
@@ -1641,32 +1616,27 @@ namespace Reignite {
       vkUpdateDescriptorSets(data->device, static_cast<u32>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
 
       // Sky box descriptor set
-      allocInfo = vk::initializers::DescriptorSetAllocateInfo(
-        data->descriptorPool, &data->skyboxDescriptorSetLayout, 1);
+      VkDescriptorSetAllocateInfo skyboxAllocInfo = vk::initializers::DescriptorSetAllocateInfo(
+        data->descriptorPool, &data->materials[0].descriptorSetLayout, 1);
 
-      VkDescriptorImageInfo textureDescriptor =
-        vk::initializers::DescriptorImageInfo(
-          data->cubeMap.sampler,
-          data->cubeMap.view,
-          data->cubeMap.imageLayout);
+      VkDescriptorImageInfo textureDescriptor = vk::initializers::DescriptorImageInfo(
+        data->cubeMap.sampler, data->cubeMap.view, data->cubeMap.imageLayout);
 
-      VK_CHECK(vkAllocateDescriptorSets(data->device, &allocInfo, &data->descriptorSets.skybox));
+      VK_CHECK(vkAllocateDescriptorSets(data->device, &skyboxAllocInfo, &data->materials[0].descriptorSet));
 
-      writeDescriptorSets =
-      {
+      writeDescriptorSets = {
         // Binding 0 : Vertex shader uniform buffer
         vk::initializers::WriteDescriptorSet(
-          data->descriptorSets.skybox,
+          data->materials[0].descriptorSet,
           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          0,
-          &data->uniformBuffers.skybox.descriptor),
+          0, &data->uniformBuffers.skybox.descriptor),
         // Binding 1 : Fragment shader cubemap sampler
         vk::initializers::WriteDescriptorSet(
-          data->descriptorSets.skybox,
+          data->materials[0].descriptorSet,
           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-          1,
-          &textureDescriptor)
+          1, &textureDescriptor)
       };
+
       vkUpdateDescriptorSets(data->device, (u32)writeDescriptorSets.size(), writeDescriptorSets.data(), 0, NULL);
     }
 

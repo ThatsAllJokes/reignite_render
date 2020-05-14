@@ -23,6 +23,7 @@
 #include "vulkan_initializers.h"
 #include "vulkan_swapchain.h"
 #include "vulkan_texture.h"
+#include "vulkan_buffer.h"
 
 #include "../basic_types.h"
 #include "../log.h"
@@ -41,27 +42,36 @@ VkResult CreateFramebuffer(VkDevice device, VkFramebuffer& framebuffer,
 
 VkResult CreateSampler(VkDevice device, VkSampler& sampler);
 
-VkResult CreateGraphicsPipeline(VkDevice device, VkPipelineLayout pipelineLayout,
-  VkRenderPass renderPass, std::string shader, VkPipelineCache pipelineCache,
-  VkPipeline& pipeline, VkPipelineVertexInputStateCreateInfo vertexInputState,
-  std::vector<VkPipelineColorBlendAttachmentState> blendAttachmentStates,
-  VkPipelineDepthStencilStateCreateInfo depthStencilState,
-  VkFrontFace frontFace);
+struct PipelineCreateInfo {
+
+  VkFrontFace frontFace;
+  std::vector<VkPipelineColorBlendAttachmentState> blendAttachmentStates;
+  std::array<std::string, 2> filenames;
+  std::array<VkShaderStageFlagBits, 2> stages;
+  VkPipelineLayout pipelineLayout;
+  VkRenderPass renderPass;
+  VkPipelineDepthStencilStateCreateInfo depthStencilState;
+  VkPipelineVertexInputStateCreateInfo vertexInputState;
+  VkPipelineCache pipelineCache;
+};
+
+VkResult CreateGraphicsPipeline(VkDevice device, VkPipeline& pipeline, PipelineCreateInfo& pipelineInfo);
 
 VkResult CreateDescriptorPool(VkDevice device, VkDescriptorPool& descriptorPool,
   std::vector<VkDescriptorPoolSize>& poolSizes);
 
 
+
+void GenerateDeferredDebugQuads(vk::VulkanState* vulkanState,
+  vk::Buffer* vertices, vk::Buffer* indices, u32& indexCount);
+
+void GenerateShadowDebugQuads(vk::VulkanState* vulkanState,
+  vk::Buffer* vertices, vk::Buffer* indices, u32& indexCount);
+
 // New implementation end <---
 
 
 
-struct FrameBufferAttachment {
-  VkImage image;
-  VkDeviceMemory mem;
-  VkImageView view;
-  VkFormat format;
-};
 
 // VERTEX DEFINITION //////////////////////////////////////////////////////////////////////
 
@@ -250,41 +260,12 @@ inline VkPipelineCache CreatePipelineCache(VkDevice device) {
   return pipelineCache;
 }
 
-VkPipelineLayout createPipelineLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout);
-
-VkDescriptorSetLayout createDescriptorSetLayout(VkDevice device);
-
-VkPipeline createGraphicsPipeline(VkDevice device, VkPipelineCache pipelineCache, VkRenderPass renderPass,
-  VkShaderModule vs, VkShaderModule fs, VkPipelineLayout layout, VkSampleCountFlagBits msaaSamples);
-
-VkImageMemoryBarrier imageBarrier(VkImage image,
-  VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask,
-  VkImageLayout oldLayout, VkImageLayout newLayout);
-
 VkCommandBuffer BeginSingleTimeCommands(VkDevice device, VkCommandPool commandPool);
 
 void EndSingleTimeCommands(VkDevice device, VkCommandBuffer commandBuffer, VkCommandPool commandPool,
   VkQueue graphicsQueue);
 
-Buffer createUniformBuffer(VkDevice device, VkPhysicalDevice physicalDevice);
-
-Buffer createUniformBufferParams(VkDevice device, VkPhysicalDevice physicalDevice);
-
-VkDescriptorPool createDescriptorPool(VkDevice device, uint32_t maxDescriptors, uint32_t maxSamplers);
-
-VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descriptorPool,
-  VkDescriptorSetLayout descriptorSetLayout, Buffer& uniformBuffer, Buffer& param,
-  VkImageView textureImageView, VkSampler textureSampler);
-
-void generateMipmaps(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool,
-  VkQueue graphicsQueue, VkImage image, VkFormat format, int32_t texWidth, int32_t texHeight,
-  uint32_t mipLevels);
-
 // Deferred Tool functions ///////////////////////////////////////////////////////////////////////////////
-
-void CreateFramebufferAttachment(VkDevice device, VkPhysicalDevice physicalDevice, 
-  VkFormat format, VkImageUsageFlagBits usage, FrameBufferAttachment* attachment,
-  s32 offScreenWidth, s32 offScreenHeight);
 
 inline VkPipelineShaderStageCreateInfo loadShader(VkDevice device,
   std::string filename, VkShaderStageFlagBits stage) {

@@ -1,11 +1,6 @@
 #version 450
 #extension GL_KHR_vulkan_glsl : enable
 
-layout (binding = 0, set = 0) uniform Matrices {
-  mat4 projection;
-  mat4 view;
-} matrices;
-
 layout (binding = 0, set = 1) uniform Model {
   mat4 matrix;
 } model;

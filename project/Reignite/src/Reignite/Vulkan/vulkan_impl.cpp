@@ -84,12 +84,7 @@ VkResult CreateSampler(VkDevice device, VkSampler& sampler) {
   return vkCreateSampler(device, &samplerCreateInfo, nullptr, &sampler);
 }
 
-VkResult CreateGraphicsPipeline(VkDevice device, VkPipelineLayout pipelineLayout, 
-  VkRenderPass renderPass, std::string shader, VkPipelineCache pipelineCache, 
-  VkPipeline& pipeline, VkPipelineVertexInputStateCreateInfo vertexInputState,
-  std::vector<VkPipelineColorBlendAttachmentState> blendAttachmentStates,
-  VkPipelineDepthStencilStateCreateInfo depthStencilState,
-  VkFrontFace frontFace) {
+VkResult CreateGraphicsPipeline(VkDevice device, VkPipeline& pipeline, PipelineCreateInfo& pipelineInfo) {
 
   VkPipelineInputAssemblyStateCreateInfo inputAssemblyState =
     vk::initializers::PipelineInputAssemblyStateCreateInfo(
@@ -97,10 +92,10 @@ VkResult CreateGraphicsPipeline(VkDevice device, VkPipelineLayout pipelineLayout
 
   VkPipelineRasterizationStateCreateInfo rasterizationState =
     vk::initializers::PipelineRasterizationStateCreateInfo(
-      VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, frontFace, 0);
+      VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, pipelineInfo.frontFace, 0);
 
   VkPipelineColorBlendStateCreateInfo colorBlendState =
-    vk::initializers::PipelineColorBlendStateCreateInfo(blendAttachmentStates);
+    vk::initializers::PipelineColorBlendStateCreateInfo(pipelineInfo.blendAttachmentStates);
 
   VkPipelineViewportStateCreateInfo viewportState =
     vk::initializers::PipelineViewportStateCreateInfo(1, 1, 0);
@@ -117,28 +112,28 @@ VkResult CreateGraphicsPipeline(VkDevice device, VkPipelineLayout pipelineLayout
 
   std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages = {};
   shaderStages[0] = loadShader(device,
-    Reignite::Tools::GetAssetPath() + "shaders/" + shader + ".vert.spv",
-    VK_SHADER_STAGE_VERTEX_BIT);
+    Reignite::Tools::GetAssetPath() + "shaders/" + pipelineInfo.filenames[0] + ".spv",
+    pipelineInfo.stages[0]);
 
   shaderStages[1] = loadShader(device,
-    Reignite::Tools::GetAssetPath() + "shaders/" + shader + ".frag.spv",
-    VK_SHADER_STAGE_FRAGMENT_BIT);
+    Reignite::Tools::GetAssetPath() + "shaders/" + pipelineInfo.filenames[1] + ".spv",
+    pipelineInfo.stages[1]);
 
   VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo =
-    vk::initializers::GraphicsPipelineCreateInfo(pipelineLayout, renderPass, 0);
+    vk::initializers::GraphicsPipelineCreateInfo(pipelineInfo.pipelineLayout, pipelineInfo.renderPass, 0);
 
   graphicsPipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
   graphicsPipelineCreateInfo.pRasterizationState = &rasterizationState;
   graphicsPipelineCreateInfo.pColorBlendState = &colorBlendState;
   graphicsPipelineCreateInfo.pMultisampleState = &multisampleState;
   graphicsPipelineCreateInfo.pViewportState = &viewportState;
-  graphicsPipelineCreateInfo.pDepthStencilState = &depthStencilState;
+  graphicsPipelineCreateInfo.pDepthStencilState = &pipelineInfo.depthStencilState;
   graphicsPipelineCreateInfo.pDynamicState = &dynamicState;
   graphicsPipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
   graphicsPipelineCreateInfo.pStages = shaderStages.data();
-  graphicsPipelineCreateInfo.pVertexInputState = &vertexInputState;
+  graphicsPipelineCreateInfo.pVertexInputState = &pipelineInfo.vertexInputState;
 
-  return vkCreateGraphicsPipelines(device, pipelineCache, 1, &graphicsPipelineCreateInfo, nullptr, &pipeline);
+  return vkCreateGraphicsPipelines(device, pipelineInfo.pipelineCache, 1, &graphicsPipelineCreateInfo, nullptr, &pipeline);
 }
 
 VkResult CreateDescriptorPool(VkDevice device, VkDescriptorPool& descriptorPool,
@@ -151,6 +146,51 @@ VkResult CreateDescriptorPool(VkDevice device, VkDescriptorPool& descriptorPool,
       20);
 
   return vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool);
+}
+
+
+void GenerateDeferredDebugQuads(vk::VulkanState* vulkanState,
+  vk::Buffer* vertices, vk::Buffer* indices, u32& indexCount) {
+
+  std::vector<Vertex> vertexBuffer;
+
+  float x = 0.0f;
+  float y = 0.0f;
+  for (u32 i = 0; i < 3; ++i) {
+
+    vertexBuffer.push_back({ { x + 1.0f, y + 1.0f, 0.0f }, { 0.0f, 0.0f, (float)i }, { 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f } });
+    vertexBuffer.push_back({ { x,        y + 1.0f, 0.0f }, { 0.0f, 0.0f, (float)i }, { 0.0f, 1.0f }, { 1.0f, 1.0f, 1.0f } });
+    vertexBuffer.push_back({ { x,        y,        0.0f }, { 0.0f, 0.0f, (float)i }, { 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } });
+    vertexBuffer.push_back({ { x + 1.0f, y,        0.0f }, { 0.0f, 0.0f, (float)i }, { 1.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } });
+
+    x += 1.0f;
+    if (x > 1.0f) {
+      x = 0.0f;
+      y += 1.0f;
+    }
+  }
+
+  VK_CHECK(vulkanState->createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    vertexBuffer.size() * sizeof(Vertex), &vertices->buffer, &vertices->memory,
+    vertexBuffer.data()));
+
+  std::vector<u32> indexBuffer = { 0, 1, 2, 2, 3, 0 };
+  for (u32 i = 0; i < 3; ++i) {
+
+    u32 indices[6] = { 0, 1, 2, 2, 3, 0 };
+    for (auto index : indices) {
+
+      indexBuffer.push_back(i * 4 + index);
+    }
+  }
+
+  indexCount = static_cast<uint32_t>(indexBuffer.size());
+
+  VK_CHECK(vulkanState->createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    indexBuffer.size() * sizeof(u32), &indices->buffer, &indices->memory,
+    indexBuffer.data()));
 }
 
 // new implementation end <----
@@ -1145,7 +1185,7 @@ void generateMipmaps(VkDevice device, VkPhysicalDevice physicalDevice, VkCommand
 
 // Deferred Tool functions ///////////////////////////////////////////////////////////////////////////////
 
-void CreateFramebufferAttachment(VkDevice device, VkPhysicalDevice physicalDevice, 
+/*void CreateFramebufferAttachment(VkDevice device, VkPhysicalDevice physicalDevice, 
   VkFormat format, VkImageUsageFlagBits usage, FrameBufferAttachment* attachment,
   s32 offScreenWidth, s32 offScreenHeight) {
 
@@ -1199,6 +1239,6 @@ void CreateFramebufferAttachment(VkDevice device, VkPhysicalDevice physicalDevic
   imageView.subresourceRange.layerCount = 1;
   imageView.image = attachment->image;
   VK_CHECK(vkCreateImageView(device, &imageView, nullptr, &attachment->view));
-}
+}*/
 
 
