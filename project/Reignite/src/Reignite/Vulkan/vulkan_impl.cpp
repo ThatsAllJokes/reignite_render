@@ -193,6 +193,39 @@ void GenerateDeferredDebugQuads(vk::VulkanState* vulkanState,
     indexBuffer.data()));
 }
 
+void GenerateShadowDebugQuads(vk::VulkanState* vulkanState,
+  vk::Buffer* vertices, vk::Buffer* indices, u32& indexCount) {
+
+  std::vector<Vertex> vertexBuffer;
+
+  vertexBuffer.push_back({ { 1.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f } });
+  vertexBuffer.push_back({ { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f }, { 1.0f, 1.0f, 1.0f } });
+  vertexBuffer.push_back({ { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } });
+  vertexBuffer.push_back({ { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f }, { 1.0f, 1.0f, 1.0f } });
+
+  VK_CHECK(vulkanState->createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    vertexBuffer.size() * sizeof(Vertex), &vertices->buffer, &vertices->memory,
+    vertexBuffer.data()));
+
+  std::vector<u32> indexBuffer = { 0, 1, 2, 2, 3, 0 };
+  for (u32 i = 0; i < 3; ++i) {
+
+    u32 indices[6] = { 0, 1, 2, 2, 3, 0 };
+    for (auto index : indices) {
+
+      indexBuffer.push_back(i * 4 + index);
+    }
+  }
+
+  indexCount = static_cast<uint32_t>(indexBuffer.size());
+
+  VK_CHECK(vulkanState->createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+    indexBuffer.size() * sizeof(u32), &indices->buffer, &indices->memory,
+    indexBuffer.data()));
+}
+
 // new implementation end <----
 
 

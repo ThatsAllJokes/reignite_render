@@ -39,10 +39,10 @@ namespace Reignite {
 
     std::vector<s32> textures;
 
-    vk::Texture2D colorMap;
-    vk::Texture2D normalMap;
-    vk::Texture2D roughness;
-    vk::Texture2D metallic;
+    //vk::Texture2D colorMap;
+    //vk::Texture2D normalMap;
+    //vk::Texture2D roughness;
+    //vk::Texture2D metallic;
   };
 
 } // end of Reignite namespace

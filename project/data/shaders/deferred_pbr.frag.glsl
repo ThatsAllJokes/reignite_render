@@ -163,13 +163,13 @@ void main() {
 	vec3 fragcolor = albedo.rgb * AMBIENT_LIGHT;
 	
 	vec3 N = normalize(normal);
-	vec3 V = normalize(-ubo.viewPos.xyz); 	// Viewer to fragment
+	vec3 V = normalize(ubo.viewPos.xyz - fragPos); 	// Viewer to fragment
 
   float lightCosInnerAngle = cos(radians(15.0));
 	float lightCosOuterAngle = cos(radians(25.0));
 	float lightRange = 100.0;
 
-	for(int i = 0; i < LIGHT_COUNT; ++i) {
+	for(int i = 0; i < 1; ++i) {
 
 		vec3 L = normalize(ubo.lights[i].position.xyz - fragPos); // Vector to light
     vec3 H = normalize (V + L);

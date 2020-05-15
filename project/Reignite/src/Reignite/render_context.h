@@ -37,6 +37,7 @@ namespace Reignite {
 
     u32 createGeometryResource(GeometryEnum geometry, std::string path = "");
     u32 createMaterialResource();
+    u32 createTextureResource(std::string filename);
 
     void initRenderState();
     void updateRenderState();
