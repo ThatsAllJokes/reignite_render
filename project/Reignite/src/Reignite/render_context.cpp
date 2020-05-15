@@ -169,13 +169,14 @@ namespace Reignite {
       vec4f position;
       vec4f target;
       vec4f color;
-      float radius;
+      //float radius;
       mat4f view;
     };
 
     struct {
       vec4f viewPos;
       Light lights[3];
+      //u32 numbLights = 3;
       u32 useShadows = 1;
     } uboFragmentLights;
 
@@ -789,9 +790,9 @@ namespace Reignite {
 
       data->uboFragmentLights.lights[i].color = data->lightData.color[i];
       data->uboFragmentLights.lights[i].position = data->lightData.position[i];
-      data->uboFragmentLights.lights[i].radius = data->lightData.radius[i];
+      //data->uboFragmentLights.lights[i].radius = data->lightData.radius[i];
       data->uboFragmentLights.lights[i].target = data->lightData.target[i];
-      data->uboFragmentLights.lights[i].view = data->lightData.view[i];
+      //data->uboFragmentLights.lights[i].view = data->lightData.view[i];
     }
 
     // Shadow ubo data updating
@@ -815,7 +816,6 @@ namespace Reignite {
     data->uboFragmentLights.viewPos = glm::vec4(state->compSystem->camera()->position, 0.0f) * glm::vec4(-1.0f, 1.0f, -1.0f, 1.0f);
 
     memcpy(data->uniformBuffers.fsLights.mapped, &data->uboFragmentLights, sizeof(data->uboFragmentLights));
-
   }
 
   void RenderContext::loadResources() {
@@ -1202,7 +1202,7 @@ namespace Reignite {
       createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/geosphere.obj");
       createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/box.obj");
       createGeometryResource(kGeometryEnum_Terrain);
-      createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/eyeball.obj");
+      //createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/eyeball.obj");
 
       createMaterialResource(); // skybox
       createMaterialResource(); // deferred
