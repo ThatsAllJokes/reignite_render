@@ -226,6 +226,53 @@ void GenerateShadowDebugQuads(vk::VulkanState* vulkanState,
     indexBuffer.data()));
 }
 
+
+
+void DefineTexturedPBRPipeline() {
+
+  std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
+
+    // Binding 1 : Position texture target / Scene colormap
+    vk::initializers::DescriptorSetLayoutBinding(
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      VK_SHADER_STAGE_FRAGMENT_BIT, 0),
+    // Binding 2 : Normals texture target
+    vk::initializers::DescriptorSetLayoutBinding(
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      VK_SHADER_STAGE_FRAGMENT_BIT, 1),
+    // Binding 3 : Albedo texture target
+    vk::initializers::DescriptorSetLayoutBinding(
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      VK_SHADER_STAGE_FRAGMENT_BIT, 2),
+    // Binding 4 : Roughness texture
+    vk::initializers::DescriptorSetLayoutBinding(
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      VK_SHADER_STAGE_FRAGMENT_BIT, 3),
+    // Binding 5 : Metalllic texture
+    vk::initializers::DescriptorSetLayoutBinding(
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      VK_SHADER_STAGE_FRAGMENT_BIT, 4),
+    // Binding 6 : Fragment shader uniform buffer
+    vk::initializers::DescriptorSetLayoutBinding(
+      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      VK_SHADER_STAGE_FRAGMENT_BIT, 5),
+    // Binding 7 : Shadow map
+    vk::initializers::DescriptorSetLayoutBinding(
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      VK_SHADER_STAGE_FRAGMENT_BIT, 6),
+  };
+
+  VkDescriptorSetLayoutCreateInfo descriptorLayout = vk::initializers::DescriptorSetLayoutCreateInfo(
+    setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
+
+  //VK_CHECK(vkCreateDescriptorSetLayout(data->device, &descriptorLayout, nullptr, &data->materials[4].descriptorSetLayout));
+
+  //pPipelineLayoutCreateInfo = vk::initializers::PipelineLayoutCreateInfo(descSetLayouts2.data(), 3);
+
+  //VK_CHECK(vkCreatePipelineLayout(data->device, &pPipelineLayoutCreateInfo, nullptr, &data->materials[data->matDefDebug].pipelineLayout));
+
+}
+
 // new implementation end <----
 
 
@@ -419,7 +466,7 @@ VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint
   };
 
   VkPhysicalDeviceFeatures deviceFeatures = {};
-  deviceFeatures.samplerAnisotropy = VK_TRUE; // TODO: Check feature availability (unlikely not supporting)
+  deviceFeatures.samplerAnisotropy = VK_TRUE;
 
   VkDeviceCreateInfo createInfo = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
   createInfo.queueCreateInfoCount = 1;
@@ -491,7 +538,7 @@ VkSwapchainKHR createSwapchain(VkDevice device, VkSurfaceKHR surface, VkSurfaceC
   createInfo.pQueueFamilyIndices = &familyIndex;
   createInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
   createInfo.compositeAlpha = surfaceComposite;
-  createInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR; // TODO: Research presentation mode
+  createInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
   createInfo.oldSwapchain = oldSwapchain;
 
   VkSwapchainKHR swapchain = 0;
@@ -860,8 +907,6 @@ void destroySwapchain(VkDevice device, const Swapchain& swapchain) {
   vkDestroySwapchainKHR(device, swapchain.swapchain, 0);
 }
 
-// TODO: Check uniform buffers recreation when modifying swapchain
-// TODO: Check description pool recreation when modifying swapchain
 void resizeSwapchainIfNecessary(Swapchain& result, VkPhysicalDevice physicalDevice,
   VkDevice device, VkSurfaceKHR surface, uint32_t familyIndex, VkFormat format,
   VkRenderPass renderPass, VkImageView depthImageView) {
@@ -875,7 +920,6 @@ void resizeSwapchainIfNecessary(Swapchain& result, VkPhysicalDevice physicalDevi
   if (result.width == newWidth && result.height == newHeight)
     return;
 
-  // TODO: Check depth buffer resizing
 
   Swapchain old = result;
   //createSwapchain(result, physicalDevice, device, surface, familyIndex, format, renderPass, depthImageView, old.swapchain);
@@ -1017,34 +1061,12 @@ Buffer createIndexBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
   return buffer;
 }
 
-Buffer createUniformBuffer(VkDevice device, VkPhysicalDevice physicalDevice) {
-
-  VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-  Buffer uniformBufferObject;
-  createBuffer(device, physicalDevice, &uniformBufferObject, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-  return uniformBufferObject;
-}
-
 void MapUniformBuffer(VkDevice device, Buffer& buffer, void* data, u32 uboSize) {
 
   void* mapped;
   vkMapMemory(device, buffer.bufferMemory, 0, uboSize, 0, &mapped);
   memcpy(mapped, data, uboSize);
   vkUnmapMemory(device, buffer.bufferMemory);
-}
-
-Buffer createUniformBufferParams(VkDevice device, VkPhysicalDevice physicalDevice) {
-
-  VkDeviceSize bufferSize = sizeof(UBOParams);
-
-  Buffer uniformBufferObject;
-  createBuffer(device, physicalDevice, &uniformBufferObject, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-  return uniformBufferObject;
 }
 
 VkDescriptorPool createDescriptorPool(VkDevice device, uint32_t maxDescriptors, uint32_t maxSamplers) {
@@ -1064,214 +1086,5 @@ VkDescriptorPool createDescriptorPool(VkDevice device, uint32_t maxDescriptors, 
   return descriptorPool;
 }
 
-VkDescriptorSet createDescriptorSets(VkDevice device, VkDescriptorPool descriptorPool,
-  VkDescriptorSetLayout descriptorSetLayout, Buffer& uniformBuffer, Buffer& params,
-  VkImageView textureImageView, VkSampler textureSampler) {
-
-  VkDescriptorSetAllocateInfo allocInfo = 
-    vk::initializers::DescriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
-
-  VkDescriptorSet descriptorSet;
-  VK_CHECK(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet));
-
-  VkDescriptorBufferInfo bufferInfo = {};
-  bufferInfo.buffer = uniformBuffer.buffer;
-  bufferInfo.offset = 0;
-  bufferInfo.range = sizeof(UniformBufferObject);
-
-  VkDescriptorBufferInfo paramsInfo = {};
-  paramsInfo.buffer = params.buffer;
-  paramsInfo.offset = 0;
-  paramsInfo.range = sizeof(UBOParams);
-
-  VkDescriptorImageInfo imageInfo = vk::initializers::DescriptorImageInfo(
-    textureSampler, textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-  std::array<VkWriteDescriptorSet, 3> descriptorWrites = {
-  
-    vk::initializers::WriteDescriptorSet(descriptorSet, 
-      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &bufferInfo),
-
-    vk::initializers::WriteDescriptorSet(descriptorSet,
-      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, &paramsInfo),
-
-    vk::initializers::WriteDescriptorSet(descriptorSet,
-      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &imageInfo)
-  };
-
-  vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()),
-    descriptorWrites.data(), 0, nullptr);
-
-  return descriptorSet;
-}
-
-void createImage(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t width, uint32_t height,
-  uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
-  VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
-
-  VkImageCreateInfo imageInfo = vk::initializers::ImageCreateInfo();
-  imageInfo.imageType = VK_IMAGE_TYPE_2D;
-  imageInfo.extent.width = width;
-  imageInfo.extent.height = height;
-  imageInfo.extent.depth = 1;
-  imageInfo.mipLevels = mipLevels;
-  imageInfo.arrayLayers = 1;
-  imageInfo.format = format;
-  imageInfo.tiling = tiling;
-  imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  imageInfo.usage = usage; // VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
-  imageInfo.samples = numSamples;
-  imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-  VK_CHECK(vkCreateImage(device, &imageInfo, nullptr, &image)); // TODO: Check for different supported formats
-
-  VkMemoryRequirements memRequirements;
-  vkGetImageMemoryRequirements(device, image, &memRequirements);
-
-  VkMemoryAllocateInfo allocInfo = vk::initializers::MemoryAllocateInfo();
-  allocInfo.allocationSize = memRequirements.size;
-  allocInfo.memoryTypeIndex = findMemoryType(physicalDevice, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-  VK_CHECK(vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory));
-
-  vkBindImageMemory(device, image, imageMemory, 0);
-}
-
-void generateMipmaps(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool,
-  VkQueue graphicsQueue, VkImage image, VkFormat format, int32_t texWidth, int32_t texHeight,
-  uint32_t mipLevels) {
-
-  // Check if image format supports linear blitting
-  VkFormatProperties formatProperties;
-  vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
-
-  if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
-    assert(!"Texture image format does not support linear blitting");
-  }
-
-  VkCommandBuffer commandBuffer = BeginSingleTimeCommands(device, commandPool);
-
-  VkImageMemoryBarrier barrier = {};
-  barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-  barrier.image = image;
-  barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  barrier.subresourceRange.baseArrayLayer = 0;
-  barrier.subresourceRange.layerCount = 1;
-  barrier.subresourceRange.levelCount = 1;
-
-  int32_t mipWidth = texWidth;
-  int32_t mipHeight = texHeight;
-
-  for (uint32_t i = 1; i < mipLevels; i++) {
-
-    barrier.subresourceRange.baseMipLevel = i - 1;
-    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-      0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-    VkImageBlit blit = {};
-    blit.srcOffsets[0] = { 0, 0, 0 };
-    blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
-    blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    blit.srcSubresource.mipLevel = i - 1;
-    blit.srcSubresource.baseArrayLayer = 0;
-    blit.srcSubresource.layerCount = 1;
-    blit.dstOffsets[0] = { 0, 0, 0 };
-    blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
-    blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    blit.dstSubresource.mipLevel = i;
-    blit.dstSubresource.baseArrayLayer = 0;
-    blit.dstSubresource.layerCount = 1;
-
-    vkCmdBlitImage(commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
-
-    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-    if (mipWidth > 1) mipWidth /= 2;
-    if (mipHeight > 1) mipHeight /= 2;
-  }
-
-  barrier.subresourceRange.baseMipLevel = mipLevels - 1;
-  barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-  barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-  barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-  vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-    0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-  EndSingleTimeCommands(device, commandBuffer, commandPool, graphicsQueue);
-}
-
-// Deferred Tool functions ///////////////////////////////////////////////////////////////////////////////
-
-/*void CreateFramebufferAttachment(VkDevice device, VkPhysicalDevice physicalDevice, 
-  VkFormat format, VkImageUsageFlagBits usage, FrameBufferAttachment* attachment,
-  s32 offScreenWidth, s32 offScreenHeight) {
-
-  VkImageAspectFlags aspectMask = 0;
-  VkImageLayout imageLayout;
-
-  attachment->format = format;
-
-  if (usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
-    aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  }
-
-  if (usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-    aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-    imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-  }
-
-  assert(aspectMask > 0);
-
-  VkImageCreateInfo image = vk::initializers::ImageCreateInfo();
-  image.imageType = VK_IMAGE_TYPE_2D;
-  image.format = format;
-  image.extent.width = offScreenWidth;
-  image.extent.height = offScreenHeight;
-  image.extent.depth = 1;
-  image.mipLevels = 1;
-  image.arrayLayers = 1;
-  image.samples = VK_SAMPLE_COUNT_1_BIT;
-  image.tiling = VK_IMAGE_TILING_OPTIMAL;
-  image.usage = usage | VK_IMAGE_USAGE_SAMPLED_BIT;
-
-  VkMemoryAllocateInfo memAlloc = vk::initializers::MemoryAllocateInfo();
-  VkMemoryRequirements memReqs;
-
-  VK_CHECK(vkCreateImage(device, &image, nullptr, &attachment->image));
-  vkGetImageMemoryRequirements(device, attachment->image, &memReqs);
-  memAlloc.allocationSize = memReqs.size;
-  memAlloc.memoryTypeIndex = findMemoryType(physicalDevice, memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-  VK_CHECK(vkAllocateMemory(device, &memAlloc, nullptr, &attachment->mem));
-  VK_CHECK(vkBindImageMemory(device, attachment->image, attachment->mem, 0));
-
-  VkImageViewCreateInfo imageView = vk::initializers::ImageViewCreateInfo();
-  imageView.viewType = VK_IMAGE_VIEW_TYPE_2D;
-  imageView.format = format;
-  imageView.subresourceRange = {};
-  imageView.subresourceRange.aspectMask = aspectMask;
-  imageView.subresourceRange.baseMipLevel = 0;
-  imageView.subresourceRange.levelCount = 1;
-  imageView.subresourceRange.baseArrayLayer = 0;
-  imageView.subresourceRange.layerCount = 1;
-  imageView.image = attachment->image;
-  VK_CHECK(vkCreateImageView(device, &imageView, nullptr, &attachment->view));
-}*/
 
 

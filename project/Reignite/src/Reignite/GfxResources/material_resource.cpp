@@ -14,21 +14,17 @@ void Reignite::MaterialResource::init() {
   params.metallic = 1.0f;
 
   vulkanState = nullptr;
-  //colorMap = {};
-  //normalMap = {};
-  //roughness = {};
-  //metallic = {};
+  descriptorSetLayout = 0;
+  pipelineLayout = 0;
+  pipeline = 0;
   descriptorSet = 0;
 }
 
 void Reignite::MaterialResource::destroy() {
 
   vulkanState = nullptr;
-  //colorMap.destroy();
-  //normalMap.destroy();
-  //roughness.destroy();
-  //metallic.destroy();
-  //descriptorSet
+  
+
 }
 
 void Reignite::MaterialResource::update(VkDescriptorPool descriptorPool, VkDescriptorSetLayout descriptorSetLayout) {
@@ -54,5 +50,4 @@ void Reignite::MaterialResource::update(VkDescriptorPool descriptorPool, VkDescr
   };
 
   vkUpdateDescriptorSets(vulkanState->device, static_cast<u32>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, NULL);
-
 }

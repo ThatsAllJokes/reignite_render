@@ -605,6 +605,38 @@ namespace Reignite {
 
   }
 
+  void Reignite::RenderContext::windowResize() {
+
+    vkDeviceWaitIdle(data->device);
+
+    // Recreate swapchain
+    // new width
+    // new height
+    //data->swapchain.create();
+
+    // Recreate framebuffers
+    vkDestroyImageView(data->device, data->depthStencil.view, nullptr);
+    vkDestroyImage(data->device, data->depthStencil.image, nullptr);
+    vkFreeMemory(data->device, data->depthStencil.memory, nullptr);
+    setupDepthStencil();
+
+    for (u32 i = 0; i < data->framebuffers.size(); ++i)
+      vkDestroyFramebuffer(data->device, data->framebuffers[i], nullptr);
+
+    setupFramebuffer();
+
+    // update overlay
+
+    // Recreate command buffers
+    destroyCommandBuffers();
+    createCommandBuffers();
+    buildCommandBuffers();
+
+    vkDeviceWaitIdle(data->device);
+
+    // update aspect ratio
+  }
+
   void Reignite::RenderContext::drawScene() {
 
     updateRenderState();
@@ -729,6 +761,78 @@ namespace Reignite {
 
   }
 
+  void Reignite::RenderContext::createCommandBuffers() {
+
+    data->commandBuffers.resize(data->swapchain.imageCount);
+    VkCommandBufferAllocateInfo cmdBuffAllocateInfo =
+      vk::initializers::CommandBufferAllocateInfo(data->commandPool,
+        VK_COMMAND_BUFFER_LEVEL_PRIMARY, static_cast<u32>(data->commandBuffers.size()));
+    
+    VK_CHECK(vkAllocateCommandBuffers(data->device, &cmdBuffAllocateInfo, data->commandBuffers.data()));
+  }
+
+  void Reignite::RenderContext::destroyCommandBuffers() {
+
+    vkFreeCommandBuffers(data->device, data->commandPool, 
+      static_cast<uint32_t>(data->commandBuffers.size()), 
+      data->commandBuffers.data());
+  }
+
+  void Reignite::RenderContext::setupDepthStencil() {
+
+    VkImageCreateInfo imageCreateInfo = {};
+    imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageCreateInfo.format = data->depthFormat;
+    imageCreateInfo.extent = { state->window->width(), state->window->height(), 1 };
+    imageCreateInfo.mipLevels = 1;
+    imageCreateInfo.arrayLayers = 1;
+    imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+
+    VK_CHECK(vkCreateImage(data->device, &imageCreateInfo, nullptr, &data->depthStencil.image));
+
+    VkMemoryRequirements memoryReqs = {};
+    vkGetImageMemoryRequirements(data->device, data->depthStencil.image, &memoryReqs);
+
+    VkMemoryAllocateInfo memAlloc = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    memAlloc.allocationSize = memoryReqs.size;
+    memAlloc.memoryTypeIndex = data->vulkanState->getMemoryType(memoryReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    VK_CHECK(vkAllocateMemory(data->device, &memAlloc, nullptr, &data->depthStencil.memory));
+    VK_CHECK(vkBindImageMemory(data->device, data->depthStencil.image, data->depthStencil.memory, 0));
+
+    VkImageViewCreateInfo imageViewCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
+    imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    imageViewCreateInfo.image = data->depthStencil.image;
+    imageViewCreateInfo.format = data->depthFormat;
+    imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+    imageViewCreateInfo.subresourceRange.levelCount = 1;
+    imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+    imageViewCreateInfo.subresourceRange.layerCount = 1;
+    imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+    if (data->depthFormat >= VK_FORMAT_D16_UNORM_S8_UINT) {
+      imageViewCreateInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+    }
+    VK_CHECK(vkCreateImageView(data->device, &imageViewCreateInfo, nullptr, &data->depthStencil.view));
+  }
+
+  void Reignite::RenderContext::setupFramebuffer() {
+
+    std::vector<VkImageView> attachments(2);
+    attachments[1] = data->depthStencil.view;
+
+    data->framebuffers.resize(data->swapchain.imageCount);
+    for (u32 i = 0; i < data->framebuffers.size(); i++) {
+
+      attachments[0] = data->swapchain.buffers[i].view;
+      VK_CHECK(CreateFramebuffer(data->device, data->framebuffers[i], data->renderPass,
+        state->window->width(), state->window->height(), attachments));
+    }
+
+  }
+
   void RenderContext::updateUniformBuffersScreen() {
 
     if(data->deferred_debug_display) {
@@ -809,6 +913,10 @@ namespace Reignite {
       data->uboShadowGS.mvp[i] = shadowProj * shadowView * shadowModel;
       data->uboFragmentLights.lights[i].view = data->uboShadowGS.mvp[i];
     }
+
+    data->uboShadowGS.instancePos[0] = glm::vec4(0.0f);
+    data->uboShadowGS.instancePos[1] = glm::vec4(-4.0f, 0.0, -4.0f, 0.0f);
+    data->uboShadowGS.instancePos[2] = glm::vec4(4.0f, 0.0, -4.0f, 0.0f);
 
     memcpy(data->uniformBuffers.gsShadows.mapped, &data->uboShadowGS, sizeof(data->uboShadowGS));
 
@@ -946,13 +1054,8 @@ namespace Reignite {
     u32 auxHeight = (u32)state->window->height(); // TODO: Modify window size to u32 type
     data->swapchain.create(&auxWidth, &auxHeight);
 
-    // create command buffers
-    data->commandBuffers.resize(data->swapchain.imageCount);
-    VkCommandBufferAllocateInfo cmdBuffAllocateInfo =
-      vk::initializers::CommandBufferAllocateInfo(data->commandPool,
-        VK_COMMAND_BUFFER_LEVEL_PRIMARY, static_cast<u32>(data->commandBuffers.size()));
-    VK_CHECK(vkAllocateCommandBuffers(data->device, &cmdBuffAllocateInfo, data->commandBuffers.data()));
-
+    createCommandBuffers();
+ 
     // create sync primitives
     VkFenceCreateInfo fenceCreateInfo =
       vk::initializers::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
@@ -960,45 +1063,7 @@ namespace Reignite {
     for (auto& fence : data->waitFences)
       VK_CHECK(vkCreateFence(data->device, &fenceCreateInfo, nullptr, &fence));
 
-    // setup depth stencil?
-    {
-      VkImageCreateInfo imageCreateInfo = {};
-      imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-      imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-      imageCreateInfo.format = data->depthFormat;
-      imageCreateInfo.extent = { auxWidth, auxHeight, 1 };
-      imageCreateInfo.mipLevels = 1;
-      imageCreateInfo.arrayLayers = 1;
-      imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-      imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-      imageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-
-      VK_CHECK(vkCreateImage(data->device, &imageCreateInfo, nullptr, &data->depthStencil.image));
-
-      VkMemoryRequirements memoryReqs = {};
-      vkGetImageMemoryRequirements(data->device, data->depthStencil.image, &memoryReqs);
-
-      VkMemoryAllocateInfo memAlloc = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-      memAlloc.allocationSize = memoryReqs.size;
-      memAlloc.memoryTypeIndex = data->vulkanState->getMemoryType(memoryReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-      VK_CHECK(vkAllocateMemory(data->device, &memAlloc, nullptr, &data->depthStencil.memory));
-      VK_CHECK(vkBindImageMemory(data->device, data->depthStencil.image, data->depthStencil.memory, 0));
-
-      VkImageViewCreateInfo imageViewCreateInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-      imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-      imageViewCreateInfo.image = data->depthStencil.image;
-      imageViewCreateInfo.format = data->depthFormat;
-      imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-      imageViewCreateInfo.subresourceRange.levelCount = 1;
-      imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-      imageViewCreateInfo.subresourceRange.layerCount = 1;
-      imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-
-      if (data->depthFormat >= VK_FORMAT_D16_UNORM_S8_UINT) {
-        imageViewCreateInfo.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-      }
-      VK_CHECK(vkCreateImageView(data->device, &imageViewCreateInfo, nullptr, &data->depthStencil.view));
-    }
+    setupDepthStencil();
 
     // setup renderPass
     {
@@ -1037,19 +1102,7 @@ namespace Reignite {
       VK_CHECK(vkCreatePipelineCache(data->device, &pipelineCacheCreateInfo, nullptr, &data->pipelineCache));
     }
 
-    // setup framebuffer
-    {
-      std::vector<VkImageView> attachments(2);
-      attachments[1] = data->depthStencil.view;
-
-      data->framebuffers.resize(data->swapchain.imageCount);
-      for (u32 i = 0; i < data->framebuffers.size(); i++) {
-      
-        attachments[0] = data->swapchain.buffers[i].view;
-        VK_CHECK(CreateFramebuffer(data->device, data->framebuffers[i], data->renderPass,
-          state->window->width(), state->window->height(), attachments));
-      }
-    }
+    setupFramebuffer();
 
     // setup overlay
     {
@@ -1135,7 +1188,7 @@ namespace Reignite {
       attachmentCreateInfo.format = VK_FORMAT_D32_SFLOAT_S8_UINT;
       attachmentCreateInfo.width = 2048;
       attachmentCreateInfo.height = 2048;
-      attachmentCreateInfo.layerCount = 3; // Lights
+      attachmentCreateInfo.layerCount = 3; // Light count
       attachmentCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
       data->defFramebuffers.shadow->addAttachment(attachmentCreateInfo);
 
@@ -1202,7 +1255,7 @@ namespace Reignite {
       createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/geosphere.obj");
       createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/box.obj");
       createGeometryResource(kGeometryEnum_Terrain);
-      //createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/eyeball.obj");
+      createGeometryResource(kGeometryEnum_Load, Reignite::Tools::GetAssetPath() + "models/bombilla.obj");
 
       createMaterialResource(); // skybox
       createMaterialResource(); // deferred

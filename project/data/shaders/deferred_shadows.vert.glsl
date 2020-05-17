@@ -6,10 +6,6 @@ layout (location = 2) in vec2 inUv;
 layout (location = 3) in vec4 inColor;
 layout (location = 4) in vec4 inTangent;
 
-layout (binding = 0, set = 1) uniform Models {
-  mat4 matrix;
-} model;
-
 layout (location = 0) out int outInstanceIndex;
 
 void main() {

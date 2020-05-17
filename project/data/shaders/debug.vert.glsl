@@ -25,5 +25,5 @@ out gl_PerVertex
 void main() 
 {
 	outUV = vec3(inUV.st, inNormal.z);
-	gl_Position = view.projection * model.matrix * vec4(inPos.xyz, 1.0);
+	gl_Position = view.projection * view.view * vec4(inPos.xyz, 1.0);
 }

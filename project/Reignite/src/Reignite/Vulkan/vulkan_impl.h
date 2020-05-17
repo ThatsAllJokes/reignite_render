@@ -14,8 +14,6 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-#define GLM_FORCE_RADIANS
-#include <glm.hpp>
 #include <gtc/matrix_transform.hpp>
 
 #include <volk.h>
@@ -67,6 +65,10 @@ void GenerateDeferredDebugQuads(vk::VulkanState* vulkanState,
 
 void GenerateShadowDebugQuads(vk::VulkanState* vulkanState,
   vk::Buffer* vertices, vk::Buffer* indices, u32& indexCount);
+
+
+
+void DefineTexturedPBRPipeline();
 
 // New implementation end <---
 
@@ -132,8 +134,6 @@ void createSwapchain(Swapchain& result, VkPhysicalDevice physicalDevice, VkDevic
 
 void destroySwapchain(VkDevice device, const Swapchain& swapchain);
 
-// TODO: Check uniform buffers recreation when modifying swapchain
-// TODO: Check description pool recreation when modifying swapchain
 void resizeSwapchainIfNecessary(Swapchain& result, VkPhysicalDevice physicalDevice,
   VkDevice device, VkSurfaceKHR surface, uint32_t familyIndex, VkFormat format,
   VkRenderPass renderPass, VkImageView depthImageView);
@@ -169,43 +169,8 @@ Buffer createVertexBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
 Buffer createIndexBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
   const std::vector<u32>& indices, VkCommandPool commandPool, VkQueue graphicsQueue);
 
-// IMAGE ///////////////////////////////////////////////////////////////////////////////////
-
-struct Image {
-  VkImage image;
-  VkImageView imageView;
-  VkDeviceMemory imageMemory;
-  uint32_t width, height;
-  uint32_t mipLevels;
-};
-
-void createImage(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t width, uint32_t height,
-  uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling,
-  VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
-
-// UBO ////////////////////////////////////////////////////////////////////////////////////
-
-struct UniformBufferObject {
-  mat4f model;
-  mat4f proj;
-  mat4f view;
-  vec3f cam_pos;
-};
-
-struct UBOParams {
-  vec4f lights[4];
-};
-
-void MapUniformBuffer(VkDevice device, Buffer& buffer, void* data, u32 uboSize);
-
 
 // DEVICE ////////////////////////////////////////////////////////////////////////////////
-
-struct VulkanDevice{
-
-  VkPhysicalDevice physicalDevice;
-  VkDevice logicalDevice;
-};
 
 VkInstance createInstance();
 
@@ -216,7 +181,6 @@ VkDebugReportCallbackEXT registerDebugCallback(VkInstance instance);
 
 uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
-//uint32_t getGraphicsFamilyIndex(VkPhysicalDevice physicalDevice);
 
 VkDevice createDevice(VkInstance instance, VkPhysicalDevice physicalDevice, uint32_t familyIndex);
 

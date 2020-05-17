@@ -9,13 +9,6 @@
 namespace Reignite {
 
   struct RenderComponents : public BaseComponents {
-  
-    struct Textures {
-      s32 colorMap = -1;
-      s32 normalMap = -1;
-      s32 roughness = -1;
-      s32 metallic = -1;
-    };
 
     void init(u32 maxSize);
     void clear();
@@ -26,7 +19,6 @@ namespace Reignite {
 
     std::vector<u32> geometry;
     std::vector<u32> material;
-    std::vector<Textures> texture;
   };
 
 }

@@ -45,16 +45,26 @@ namespace Reignite {
     void buildDeferredCommands();
     void buildCommandBuffers();
 
+    void windowResize();
+
     void drawScene();
     void drawOverlay();
 
    private:
+
+    void createCommandBuffers();
+    void destroyCommandBuffers();
+
+
+    void setupDepthStencil();
+    void setupFramebuffer();
 
     void updateUniformBuffersScreen();
     void updateUniformBufferDeferredMatrices();
     void updateUniformBufferDeferredLights();
 
     void loadResources();
+
     void initialize(const std::shared_ptr<State> state, const RenderContextParams& params = RenderContextParams());
     void shutdown();
 

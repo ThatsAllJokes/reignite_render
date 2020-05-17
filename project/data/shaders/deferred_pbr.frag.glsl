@@ -30,7 +30,7 @@ layout (location = 0) out vec4 outFragcolor;
 
 #define LIGHT_COUNT 3
 #define SHADOW_FACTOR 0.25
-#define AMBIENT_LIGHT 0.4
+#define AMBIENT_LIGHT 0.6
 #define USE_PCF
 
 struct PushcConstants {
@@ -175,7 +175,7 @@ void main() {
 
     vec3 numerator = NDF * G * F;
     float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
-    vec3 specular = numerator / max(denominator, 0.001);
+    vec3 specular = numerator / max(denominator, 0.001) * 3.0;
 
     float NdotL = max(dot(N, L), 0.0);
 	  Lo += (kD * albedo / PI + specular) * radiance * NdotL;
