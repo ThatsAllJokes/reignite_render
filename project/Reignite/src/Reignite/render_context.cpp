@@ -744,6 +744,9 @@ namespace Reignite {
         updateUniformBuffersScreen();
       }
 
+      ImGui::SliderFloat("Camera Mov Speed", &state->compSystem->camera()->movementSpeed, 1.0f, 10.0f);
+      //ImGui::SliderFloat("Camera Rot Speed", &state->compSystem->camera()->rotationSpeed, 1.0f, 10.0f);
+
       ImGui::PopItemWidth();
 
       ImGui::End();

@@ -36,6 +36,7 @@
 *.png
 *.ktx
 *.tif
+*.mtl
 
 # project files
 *.vcxproj

@@ -142,7 +142,6 @@ namespace Reignite {
 
     // initialize camera
     data->camera.position = { 2.15f, 0.0f, -8.75f };
-    data->camera.rotation = glm::vec3(-0.75f, 12.5f, 0.0f);
     data->camera.setInputAccess(data->state);
     data->camera.setPerspective(60.0f, (float)state->window->width() / state->window->height(), 0.1f, 256.0f);
     data->camera.updateViewMatrix();

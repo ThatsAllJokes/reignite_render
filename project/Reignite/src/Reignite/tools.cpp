@@ -13,7 +13,7 @@
 #include "Vulkan/vulkan_impl.h"
 
 
-#define EXE_PATH 1
+#define EXE_PATH 0
 
 
 const std::string Reignite::Tools::GetAssetPath() {
