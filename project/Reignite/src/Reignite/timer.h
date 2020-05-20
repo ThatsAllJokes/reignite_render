@@ -13,6 +13,9 @@ namespace Reignite {
     static void StartTime();
     static double EndTime();
 
+    static std::chrono::steady_clock::time_point startTime() { return s_time_start; }
+    static std::chrono::steady_clock::time_point endTime() { return s_time_end; }
+
    private:
 
     static std::chrono::steady_clock::time_point s_time_start;

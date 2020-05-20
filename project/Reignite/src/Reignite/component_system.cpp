@@ -122,7 +122,7 @@ namespace Reignite {
 
   void Reignite::ComponentSystem::update() {
 
-    data->camera.update(data->state->frameTimer);
+    data->camera.update(data->state->deltaTime);
 
     data->transformComponents.update();
     data->renderComponents.update();
@@ -149,35 +149,35 @@ namespace Reignite {
     addEntityRender();
     addEntityRender();
 
-    data->transformComponents.position[1] = vec3f(0.0f, 1.0f, 0.0f);
+    data->transformComponents.position[1] = vec3f(1.5f, 0.0f, 0.0f);
 
     data->renderComponents.geometry[0] = 0;
     data->renderComponents.material[0] = 3;
 
-    data->renderComponents.geometry[1] = 2;
+    data->renderComponents.geometry[1] = 0;
     data->renderComponents.material[1] = 4;
 
     addEntityLight();
     addEntityLight();
     addEntityLight();
 
-    data->transformComponents.position[2] = vec4f(0.0f, -2.0f, 2.0f, 1.0f);
+    data->transformComponents.position[2] = vec4f(0.0f, -2.0f, -4.0f, 1.0f);
     data->renderComponents.geometry[2] = 3;
     data->renderComponents.material[2] = 4;
     data->lightComponents.target[2] = vec4f(0.0f, 0.0f, 0.0f, 0.0f);
     data->lightComponents.color[2] = vec4f(1.0f, 1.0f, 1.0f, 1.0f);
 
-    data->transformComponents.position[3] = vec4f(-4.0f, -1.0f, -4.0f, 1.0f);
+    data->transformComponents.position[3] = vec4f(3.0f, -2.0f, -4.0f, 1.0f);
     data->renderComponents.geometry[3] = 3;
     data->renderComponents.material[3] = 4;
     data->lightComponents.target[3] = vec4f(0.0f, 0.0f, 1.0f, 0.0f);
-    data->lightComponents.color[3] = vec4f(1.0f, 0.0f, 0.0f, 1.0f);
+    data->lightComponents.color[3] = vec4f(1.0f, 1.0f, 1.0f, 1.0f);
 
-    data->transformComponents.position[4] = vec4f(4.0f, -1.0f, 4.0f, 1.0f);
+    data->transformComponents.position[4] = vec4f(-3.0f, -2.0f, -4.0f, 1.0f);
     data->renderComponents.geometry[4] = 3;
     data->renderComponents.material[4] = 4;
     data->lightComponents.target[4] = vec4f(0.0f, 0.0f, 1.0f, 0.0f);
-    data->lightComponents.color[4] = vec4f(0.0f, 1.0f, 0.0f, 1.0f);
+    data->lightComponents.color[4] = vec4f(1.0f, 1.0f, 1.0f, 1.0f);
 
     update();
   }

@@ -19,10 +19,9 @@ namespace vk {
    public:
 
     Overlay();
-    ~Overlay() {};
+    ~Overlay() {}
 
     void prepareResources();
-
     void preparePipeline(const VkPipelineCache pipelineCache, const VkRenderPass renderPass);
 
     bool update();
@@ -30,6 +29,9 @@ namespace vk {
     void resize(u32 width, u32 height);
 
     void freeResources();
+
+    bool checkBox(const char* label, bool* value);
+    bool sliderFloat(const char* label, float* value, float min, float max);
 
     struct PushConstBlock {
       vec2f scale;

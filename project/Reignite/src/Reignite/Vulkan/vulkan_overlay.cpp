@@ -337,3 +337,17 @@ void vk::Overlay::freeResources() {
   vkDestroyPipelineLayout(state->device, pipelineLayout, nullptr);
   vkDestroyPipeline(state->device, pipeline, nullptr);
 }
+
+bool vk::Overlay::checkBox(const char* label, bool* value) {
+
+  bool res = ImGui::Checkbox(label, value);
+  if (res) { updated = true; }
+  return res;
+}
+
+bool vk::Overlay::sliderFloat(const char* label, float* value, float min, float max) {
+
+  bool res = ImGui::SliderFloat(label, value, min, max);
+  if (res) { updated = true; }
+  return res;
+}
