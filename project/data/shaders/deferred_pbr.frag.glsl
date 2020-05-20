@@ -18,7 +18,7 @@ struct Light {
 layout (binding = 5, set = 0) uniform UBO {
 	vec4 viewPos;
 	Light lights[3];
-  //uint numbLights;
+  uint numbLights;
   uint useShadows;
 } ubo;
 
@@ -30,7 +30,7 @@ layout (location = 0) out vec4 outFragcolor;
 
 #define LIGHT_COUNT 3
 #define SHADOW_FACTOR 0.25
-#define AMBIENT_LIGHT 0.6
+#define AMBIENT_LIGHT 0.4
 #define USE_PCF
 
 struct PushcConstants {
@@ -152,7 +152,7 @@ void main() {
   F0 = mix(F0, albedo, metallic);
 
   vec3 Lo = vec3(0.0);
-	for(int i = 0; i < LIGHT_COUNT; ++i) {
+	for(int i = 0; i < ubo.numbLights; ++i) {
 
 		vec3 L = normalize(ubo.lights[i].position.xyz - fragPos); // Vector to light
     vec3 H = normalize (V + L);
@@ -181,9 +181,15 @@ void main() {
 	  Lo += (kD * albedo / PI + specular) * radiance * NdotL;
 	}
   
+  vec3 ambient = vec3(AMBIENT_LIGHT) * albedo;
+  vec3 color = ambient + Lo;
+
+  color = color / (color + vec3(1.0));
+  color = pow(color, vec3(1.0 / 2.2));
+
   if(ubo.useShadows > 0) {
 
-    for(int i = 0; i < LIGHT_COUNT; ++i) {
+    for(int i = 0; i < ubo.numbLights; ++i) {
       
       vec4 shadowClip = ubo.lights[i].view * vec4(fragPos, 1.0);
 
@@ -194,15 +200,9 @@ void main() {
         shadowFactor = textureProj(shadowClip, i vec2(0.0));
       #endif
 
-      Lo *= shadowFactor;
+      color *= shadowFactor;
     }
   }
-
-  vec3 ambient = vec3(AMBIENT_LIGHT) * albedo;
-  vec3 color = ambient + Lo;
-
-  color = color / (color + vec3(1.0));
-  color = pow(color, vec3(1.0 / 2.2));
 
   outFragcolor = vec4(color, 1.0);	
 }

@@ -168,7 +168,7 @@ namespace Reignite {
     struct {
       vec4f viewPos;
       Light lights[3];
-      //u32 numbLights = 3;
+      u32 numbLights = 3;
       u32 useShadows = 1;
     } uboFragmentLights;
 
@@ -261,7 +261,7 @@ namespace Reignite {
       current_geometry.loadObj(path);
       break;
     case kGeometryEnum_Terrain: 
-      current_geometry.loadTerrain(12, 12);
+      current_geometry.loadTerrain(6, 6);
       break;
     }
 
@@ -747,6 +747,11 @@ namespace Reignite {
         updateUniformBuffersScreen();
       }
 
+      if (data->overlay.checkBox("Render shadows", &data->renderShadows)) {
+        data->uboFragmentLights.useShadows = !data->uboFragmentLights.useShadows;
+        updateUniformBufferDeferredLights();
+      }
+
       if (data->overlay.checkBox("Render UI Demo", &data->renderUIDemo)) {
         buildCommandBuffers();
         updateUniformBuffersScreen();
@@ -944,13 +949,6 @@ namespace Reignite {
     createTextureResource(Reignite::Tools::GetAssetPath() + "textures/iron_rust_normal.png");
     createTextureResource(Reignite::Tools::GetAssetPath() + "textures/iron_rust_roughness.png");
     createTextureResource(Reignite::Tools::GetAssetPath() + "textures/iron_rust_metallic.png");
-
-    /*
-    data->textures.model.colorMap.loadFromFile(Reignite::Tools::GetAssetPath() + "textures/stonefloor01_color_bc3_unorm.ktx", VK_FORMAT_BC3_UNORM_BLOCK, data->device, data->physicalDevice, data->commandPool, data->queue);
-    data->textures.model.normalMap.loadFromFile(Reignite::Tools::GetAssetPath() + "textures/stonefloor01_normal_bc3_unorm.ktx", VK_FORMAT_BC3_UNORM_BLOCK, data->device, data->physicalDevice, data->commandPool, data->queue);
-    data->textures.floor.colorMap.loadFromFile(Reignite::Tools::GetAssetPath() + "textures/stonefloor01_color_bc3_unorm.ktx", VK_FORMAT_BC3_UNORM_BLOCK, data->device, data->physicalDevice, data->commandPool, data->queue);
-    data->textures.floor.normalMap.loadFromFile(Reignite::Tools::GetAssetPath() + "textures/stonefloor01_normal_bc3_unorm.ktx", VK_FORMAT_BC3_UNORM_BLOCK, data->device, data->physicalDevice, data->commandPool, data->queue);
-    */
 
     std::string filename;
     VkFormat format;

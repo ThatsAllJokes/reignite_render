@@ -5,6 +5,7 @@
 
 #include "core.h"
 
+
 namespace Reignite {
 
   class REIGNITE_API Timer {

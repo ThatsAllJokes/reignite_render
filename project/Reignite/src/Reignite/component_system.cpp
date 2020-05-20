@@ -146,38 +146,53 @@ namespace Reignite {
     data->camera.setPerspective(60.0f, (float)state->window->width() / state->window->height(), 0.1f, 256.0f);
     data->camera.updateViewMatrix();
 
-    addEntityRender();
-    addEntityRender();
+    addEntityRender(); // wall 1
+    addEntityRender(); // wall 2
+    addEntityRender(); // floor
+    addEntityRender(); // sphere
 
-    data->transformComponents.position[1] = vec3f(1.5f, 0.0f, 0.0f);
 
-    data->renderComponents.geometry[0] = 0;
-    data->renderComponents.material[0] = 3;
+    data->transformComponents.position[0] = vec3f(-1.4f, -2.0f, 1.4f);
+    data->transformComponents.position[1] = vec3f(2.7f, -1.0f, 1.2f);
+    data->transformComponents.position[2] = vec3f(0.0f, 1.0f, 0.0f);
+    data->transformComponents.position[3] = vec3f(0.5f, 0.0f, 0.5f);
 
-    data->renderComponents.geometry[1] = 0;
+    data->transformComponents.rotation[0] = vec3f(0.0f, 45.0f, 90.0f);
+    data->transformComponents.rotation[1] = vec3f(0.0f, 315.0f, 270.0f);
+    data->transformComponents.rotation[2] = vec3f(0.0f, 45.0f, 0.0f);
+    data->transformComponents.rotation[3] = vec3f(0.0f, 0.0f, 0.0f);
+
+    data->renderComponents.geometry[0] = 2;
+    data->renderComponents.geometry[1] = 2;
+    data->renderComponents.geometry[2] = 2;
+    data->renderComponents.geometry[3] = 0;
+
+    data->renderComponents.material[0] = 4;
     data->renderComponents.material[1] = 4;
-
-    addEntityLight();
-    addEntityLight();
-    addEntityLight();
-
-    data->transformComponents.position[2] = vec4f(0.0f, -2.0f, -4.0f, 1.0f);
-    data->renderComponents.geometry[2] = 3;
     data->renderComponents.material[2] = 4;
-    data->lightComponents.target[2] = vec4f(0.0f, 0.0f, 0.0f, 0.0f);
-    data->lightComponents.color[2] = vec4f(1.0f, 1.0f, 1.0f, 1.0f);
+    data->renderComponents.material[3] = 3;
 
-    data->transformComponents.position[3] = vec4f(3.0f, -2.0f, -4.0f, 1.0f);
-    data->renderComponents.geometry[3] = 3;
-    data->renderComponents.material[3] = 4;
-    data->lightComponents.target[3] = vec4f(0.0f, 0.0f, 1.0f, 0.0f);
-    data->lightComponents.color[3] = vec4f(1.0f, 1.0f, 1.0f, 1.0f);
+    addEntityLight();
+    addEntityLight();
+    addEntityLight();
 
-    data->transformComponents.position[4] = vec4f(-3.0f, -2.0f, -4.0f, 1.0f);
+    data->transformComponents.position[4] = vec4f(0.5f, -2.0f, 1.5f, 1.0f);
     data->renderComponents.geometry[4] = 3;
-    data->renderComponents.material[4] = 4;
-    data->lightComponents.target[4] = vec4f(0.0f, 0.0f, 1.0f, 0.0f);
+    data->renderComponents.material[4] = 3;
+    data->lightComponents.target[4] = vec4f(0.0f, 0.0f, 0.0f, 0.0f);
     data->lightComponents.color[4] = vec4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+    data->transformComponents.position[5] = vec4f(-1.0f, -2.0f, 0.0f, 1.0f);
+    data->renderComponents.geometry[5] = 3;
+    data->renderComponents.material[5] = 3;
+    data->lightComponents.target[5] = vec4f(0.0f, 0.0f, 0.0f, 0.0f);
+    data->lightComponents.color[5] = vec4f(1.0f, 0.0f, 0.0f, 1.0f);
+
+    data->transformComponents.position[6] = vec4f(2.5f, -2.0f, 0.0f, 1.0f);
+    data->renderComponents.geometry[6] = 3;
+    data->renderComponents.material[6] = 3;
+    data->lightComponents.target[6] = vec4f(0.0f, 0.0f, 0.0f, 0.0f);
+    data->lightComponents.color[6] = vec4f(0.0f, 0.0f, 1.0f, 1.0f);
 
     update();
   }
