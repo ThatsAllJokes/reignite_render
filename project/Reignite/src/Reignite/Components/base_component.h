@@ -3,13 +3,20 @@
 
 #include <vector>
 
+#include "../basic_types.h"
+
 
 namespace Reignite {
 
   struct BaseComponents {
   
+    // Size of current components
     u32 size;
+
+    // Defines if component is being used by the entity
     std::vector<bool> used;
+
+    // Defines if component is active. Entity is already using it
     std::vector<bool> active;
   };
 

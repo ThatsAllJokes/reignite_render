@@ -38,8 +38,19 @@ namespace Reignite {
       render_context->drawScene();
       render_context->drawOverlay();
 
+      state->frameCounter++;
+
       auto timeDiff = Reignite::Timer::EndTime();
-      state->frameTimer = (float)timeDiff / 1000.0f;
+      auto timeEnd = Reignite::Timer::endTime();
+      state->deltaTime = (float)timeDiff / 1000.0f;
+
+      float fpsTimer = (float)(std::chrono::duration<double, std::milli>(timeEnd - state->lastTimestamp).count());
+      if (fpsTimer > 1000) {
+
+        state->lastFrame = static_cast<uint32_t>((float)state->frameCounter * (1000.0f / fpsTimer));
+        state->frameCounter = 0;
+        state->lastTimestamp = timeEnd;
+      }
     }
   }
 

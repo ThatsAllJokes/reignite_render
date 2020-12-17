@@ -131,7 +131,7 @@ void vk::Texture2D::loadFromFile(std::string filename, VkFormat format,
 
   vk::tools::SetImageLayout(copyCmd, image, VK_IMAGE_LAYOUT_UNDEFINED,
     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subresourceRange,
-    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT); // TODO: Check exception on SetImageLayout
+    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 
   vkCmdCopyBufferToImage(copyCmd, stagingBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
     static_cast<uint32_t>(bufferCopyRegions.size()), bufferCopyRegions.data());
@@ -280,7 +280,7 @@ void vk::Texture2D::loadFromFileSTB(std::string filename, VkFormat format,
 
   vk::tools::SetImageLayout(copyCmd, image, VK_IMAGE_LAYOUT_UNDEFINED,
     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subresourceRange,
-    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT); // TODO: Check exception on SetImageLayout
+    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 
   vkCmdCopyBufferToImage(copyCmd, stagingBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
     static_cast<uint32_t>(bufferCopyRegions.size()), bufferCopyRegions.data());

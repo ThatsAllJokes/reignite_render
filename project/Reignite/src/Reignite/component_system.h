@@ -27,8 +27,14 @@ namespace Reignite {
     ComponentSystem(const std::shared_ptr<State> state);
     ~ComponentSystem();
 
-    void addEntity();
-    void addEntity(s32 parentId);
+    void addEntityEmpty();
+    void addEntityEmpty(s32 parentId);
+
+    void addEntityRender();
+    void addEntityRender(s32 parentId);
+
+    void addEntityLight();
+    void addEntityLight(s32 parentId);
 
     Camera* camera();
     TransformComponents* transform();

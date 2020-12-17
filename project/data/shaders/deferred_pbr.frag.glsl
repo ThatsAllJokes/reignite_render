@@ -1,12 +1,28 @@
 #version 450
+#extension GL_KHR_vulkan_glsl : enable
 
-layout (binding = 1) uniform sampler2D samplerposition;
-layout (binding = 2) uniform sampler2D samplerNormal;
-layout (binding = 3) uniform sampler2D samplerAlbedo;
-layout (binding = 4) uniform sampler2D samplerRoughness;
-layout (binding = 5) uniform sampler2D samplerMetallic;
+layout (binding = 0, set = 0) uniform sampler2D samplerposition;
+layout (binding = 1, set = 0) uniform sampler2D samplerNormal;
+layout (binding = 2, set = 0) uniform sampler2D samplerAlbedo;
+layout (binding = 3, set = 0) uniform sampler2D samplerRoughness;
+layout (binding = 4, set = 0) uniform sampler2D samplerMetallic;
 
-layout (binding = 7) uniform sampler2DArray samplerShadowMap;
+struct Light {
+	vec4 position;
+  vec4 target;
+	vec4 color;
+	//float radius;
+  mat4 view;
+};
+
+layout (binding = 5, set = 0) uniform UBO {
+	vec4 viewPos;
+	Light lights[3];
+  uint numbLights;
+  uint useShadows;
+} ubo;
+
+layout (binding = 6, set = 0) uniform sampler2DArray samplerShadowMap;
 
 layout (location = 0) in vec2 inUV;
 
@@ -14,22 +30,8 @@ layout (location = 0) out vec4 outFragcolor;
 
 #define LIGHT_COUNT 3
 #define SHADOW_FACTOR 0.25
-#define AMBIENT_LIGHT 0.6
+#define AMBIENT_LIGHT 0.4
 #define USE_PCF
-
-struct Light {
-	vec4 position;
-  vec4 target;
-	vec4 color;
-	float radius;
-  mat4 view;
-};
-
-layout (binding = 6) uniform UBO {
-	Light lights[3];
-	vec4 viewPos;
-  int useShadows;
-} ubo;
 
 struct PushcConstants {
   float r;
@@ -83,62 +85,47 @@ float filterPCF(vec4 sc, float layer) {
 	return shadowFactor / count;
 }
 
-vec3 albedo;
-vec3 materialcolor() {
 
-  return vec3(albedo.r, albedo.g, albedo.b);
-}
-
-float Distrib_GGX(float NdotH, float roughness) { // Normal distribution
+float DistributionGGX(vec3 N, vec3 H, float roughness) { // Normal distribution
 
   float alpha = roughness * roughness;
   float alpha2 = alpha * alpha;
 
+  float NdotH = max(dot(N, H), 0.0);
   float NdotH2 = NdotH * NdotH;
 
-  return (alpha2) / (PI * (NdotH2 * (alpha2 - 1.0f) + 1.0f) * (NdotH2 * (alpha2 - 1.0f) + 1.0f));
+  float num = alpha2;
+  float denom = (NdotH2 * (alpha2  - 1.0) + 1.0);
+  denom = PI * denom * denom;
+
+  return num / denom;
 }
 
-float Geo_SchlickSmithGGX(float NdotL, float NdotV, float roughness) { // Geometric Shadowing 
+float GeometrySchlickGGX(float NdotV, float roughness) {
 
-  float NdotL2 = NdotL * NdotL;
-  float NdotV2 = NdotV * NdotV;
-  float kRough2 = roughness * roughness + 0.0001f;
+  float r = (roughness + 1.0);
+  float k = (r * r) / 8.0;
 
-  float ggxL = (2.0f * NdotL) / (NdotL + sqrt(NdotL2 + kRough2 * (1.0f - NdotL2)));
-  float ggxV = (2.0f * NdotV) / (NdotV + sqrt(NdotV2 + kRough2 * (1.0f - NdotV2)));
+  float num = NdotV;
+  float denom = NdotV * (1.0 - k) + k;
 
-  return ggxL * ggxV;
+  return num / denom;
 }
 
-vec3 Fresnel_Schlick(float cosTheta, float metallic) { // Fresnel
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) { // Geometric Shadowing 
 
-  vec3 F0 = mix(vec3(0.04), materialcolor(), metallic); // material * specular // TODO: this should be done with the albedo buffer
+  float NdotV = max(dot(N, V), 0.0);
+  float NdotL = max(dot(N, L), 0.0);
+
+  float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+  float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+  return ggx1 * ggx2;
+}
+
+vec3 FresnelSchlick(float cosTheta, vec3 F0) { // Fresnel
+
   return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-}
-
-vec3 BRDF(vec3 L, vec3 V, vec3 N, float metallic, float roughness, int it) { // Specular BRDF
-
-  // Precalculate vectors and dot products	
-	vec3 H = normalize (V + L);
-	float dotNL = max(clamp(dot(N, L), 0.0, 1.0), 0.0001);
-	float dotNH = max(clamp(dot(N, H), 0.0, 1.0), 0.0001);
-	float dotNV = max(clamp(dot(N, V), 0.0, 1.0), 0.0001);
-	float dotLH = max(clamp(dot(L, H), 0.0, 1.0), 0.0001);
-
-	vec3 color = vec3(0.0); 
-
-  float rroughness = max(roughness * material.roughness, 0.05);
-  float mmetallic = metallic * material.metallic;
-
-  float D = Distrib_GGX(dotNH, rroughness);                // Normal distribution (of the microfacets)
-  float G = Geo_SchlickSmithGGX(dotNL, dotNV, rroughness); // Geometric shadowing term (micorfacets shadowing)
-  vec3 F = Fresnel_Schlick(dotNV, mmetallic);              // F = Fresnel factor (Reflectance depending on angle of incidence)
-
-  vec3 spec = D * G * F / (4.0 * dotNL * dotNV);
-	color += spec * dotNL * ubo.lights[it].color.xyz;
-
-  return color;
 }
 
 
@@ -154,24 +141,22 @@ void main() {
 	// Get G-Buffer values
 	vec3 fragPos = texture(samplerposition, inUV).rgb;
 	vec3 normal = texture(samplerNormal, inUV).rgb;
-	albedo = texture(samplerAlbedo, inUV).rgb * vec3(material.r, material.g, material.b);
+	vec3 albedo = pow(texture(samplerAlbedo, inUV).rgb, vec3(2.2)); // * vec3(material.r, material.g, material.b);
   float roughness = texture(samplerRoughness, inUV).r;
   float metallic = texture(samplerMetallic, inUV).r;
 
-	vec3 fragcolor = albedo.rgb * AMBIENT_LIGHT;
-	
 	vec3 N = normalize(normal);
-	vec3 V = normalize(-ubo.viewPos.xyz); 	// Viewer to fragment
+	vec3 V = normalize(ubo.viewPos.xyz - fragPos); 	// Viewer to fragment
+	
+  vec3 F0 = vec3(0.04);
+  F0 = mix(F0, albedo, metallic);
 
-  float lightCosInnerAngle = cos(radians(15.0));
-	float lightCosOuterAngle = cos(radians(25.0));
-	float lightRange = 100.0;
-
-	for(int i = 0; i < LIGHT_COUNT; ++i) {
+  vec3 Lo = vec3(0.0);
+	for(int i = 0; i < ubo.numbLights; ++i) {
 
 		vec3 L = normalize(ubo.lights[i].position.xyz - fragPos); // Vector to light
     vec3 H = normalize (V + L);
-
+    
     float dist = length(ubo.lights[i].position.xyz - fragPos);
     float attenuation = 1.0 / (dist * dist);
     vec3 radiance = ubo.lights[i].color.xyz * attenuation;
@@ -180,24 +165,31 @@ void main() {
 	  float dotNH = max(dot(N, H), 0.0);
 	  float dotNV = max(dot(N, V), 0.0);
 
-    float rroughness = max(roughness * material.roughness, 0.05);
-    float mmetallic = metallic * material.metallic;
-
-    float D = Distrib_GGX(dotNH, rroughness);                // Normal distribution (of the microfacets)
-    float G = Geo_SchlickSmithGGX(dotNL, dotNV, rroughness); // Geometric shadowing term (micorfacets shadowing)
-    vec3 F = Fresnel_Schlick(dotNV, mmetallic);              // F = Fresnel factor (Reflectance depending on angle of incidence)
+    float NDF = DistributionGGX(N, H, roughness);     // Normal distribution (of the microfacets)
+    float G = GeometrySmith(N, V, L, roughness);      // Geometric shadowing term (micorfacets shadowing)
+    vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0); // F = Fresnel factor (Reflectance depending on angle of incidence)
 
     vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
     kD *= 1.0 - metallic;
 
-    vec3 spec = D * G * F / max((4.0 * dotNL * dotNV), 0.001);
-	  fragcolor += (kD * albedo / PI + spec) * dotNL * radiance;
+    vec3 numerator = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+    vec3 specular = numerator / max(denominator, 0.001) * 3.0;
+
+    float NdotL = max(dot(N, L), 0.0);
+	  Lo += (kD * albedo / PI + specular) * radiance * NdotL;
 	}
   
+  vec3 ambient = vec3(AMBIENT_LIGHT) * albedo;
+  vec3 color = ambient + Lo;
+
+  color = color / (color + vec3(1.0));
+  color = pow(color, vec3(1.0 / 2.2));
+
   if(ubo.useShadows > 0) {
 
-    for(int i = 0; i < LIGHT_COUNT; ++i) {
+    for(int i = 0; i < ubo.numbLights; ++i) {
       
       vec4 shadowClip = ubo.lights[i].view * vec4(fragPos, 1.0);
 
@@ -208,13 +200,9 @@ void main() {
         shadowFactor = textureProj(shadowClip, i vec2(0.0));
       #endif
 
-      fragcolor *= shadowFactor;
+      color *= shadowFactor;
     }
   }
 
-  //vec3 color = fragcolor;
-  //color = color / (color + vec3(1.0));
-  //color = pow(color, vec3(1.0/2.2)); // gamma correction/HDR
-
-  outFragcolor = vec4(fragcolor, 1.0);	
+  outFragcolor = vec4(color, 1.0);	
 }

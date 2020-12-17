@@ -48,27 +48,56 @@ namespace Reignite {
     delete data;
   }
 
-  void Reignite::ComponentSystem::addEntity() {
+  void Reignite::ComponentSystem::addEntityEmpty() {
 
-    data->entities.entity.push_back(data->entities.size++); // add entity and increment count
-    data->entities.parent.push_back(-1); 
-
-    data->transformComponents.add(vec3f(0.0f));
-    data->lightComponents.add(vec3f(0.0f, 0.0f, 1.0f));
-
-    data->renderComponents.add();
-    data->renderComponents.used[data->renderComponents.size - 1] = false;
+    addEntityEmpty(-1);
   }
 
-  void Reignite::ComponentSystem::addEntity(s32 parentId) {
+  void Reignite::ComponentSystem::addEntityEmpty(s32 parentId) {
 
     data->entities.entity.push_back(data->entities.size++); // add entity and increment count
     data->entities.parent.push_back(parentId);
 
+    data->renderComponents.add();
+    data->renderComponents.used[data->renderComponents.size - 1] = false;
+
     data->transformComponents.add(vec3f(0.0f));
     data->lightComponents.add(vec3f(0.0f, 0.0f, 1.0f));
+    data->lightComponents.used[data->lightComponents.size - 1] = false;
+  }
+
+  void Reignite::ComponentSystem::addEntityRender() {
+
+    addEntityRender(-1);
+  }
+
+  void Reignite::ComponentSystem::addEntityRender(s32 parentId) {
+
+    data->entities.entity.push_back(data->entities.size++); // add entity and increment count
+    data->entities.parent.push_back(parentId);
 
     data->renderComponents.add();
+
+    data->transformComponents.add(vec3f(0.0f));
+    data->lightComponents.add(vec3f(0.0f, 1.0f, 0.0f));
+    data->lightComponents.used[data->lightComponents.size - 1] = false;
+  }
+
+  void Reignite::ComponentSystem::addEntityLight() {
+
+    addEntityLight(-1);
+  }
+
+  void Reignite::ComponentSystem::addEntityLight(s32 parentId) {
+
+    data->entities.entity.push_back(data->entities.size++); // add entity and increment count
+    data->entities.parent.push_back(parentId);
+
+    data->renderComponents.add();
+    //data->renderComponents.used[data->renderComponents.size - 1] = false;
+
+    data->transformComponents.add(vec3f(0.0f));
+    data->lightComponents.add(vec3f(0.0f, 0.0f, 1.0f));
   }
 
   Camera* Reignite::ComponentSystem::camera() {
@@ -93,7 +122,7 @@ namespace Reignite {
 
   void Reignite::ComponentSystem::update() {
 
-    data->camera.update(data->state->frameTimer);
+    data->camera.update(data->state->deltaTime);
 
     data->transformComponents.update();
     data->renderComponents.update();
@@ -113,15 +142,57 @@ namespace Reignite {
 
     // initialize camera
     data->camera.position = { 2.15f, 0.0f, -8.75f };
-    data->camera.rotation = glm::vec3(-0.75f, 12.5f, 0.0f);
     data->camera.setInputAccess(data->state);
     data->camera.setPerspective(60.0f, (float)state->window->width() / state->window->height(), 0.1f, 256.0f);
     data->camera.updateViewMatrix();
 
-    addEntity();
-    addEntity();
+    addEntityRender(); // wall 1
+    addEntityRender(); // wall 2
+    addEntityRender(); // floor
+    addEntityRender(); // sphere
 
-    data->transformComponents.position[0] = vec3f(0.0f, 1.0f, 0.0f);
+
+    data->transformComponents.position[0] = vec3f(-1.4f, -2.0f, 1.4f);
+    data->transformComponents.position[1] = vec3f(2.7f, -1.0f, 1.2f);
+    data->transformComponents.position[2] = vec3f(0.0f, 1.0f, 0.0f);
+    data->transformComponents.position[3] = vec3f(0.5f, 0.0f, 0.5f);
+
+    data->transformComponents.rotation[0] = vec3f(0.0f, 45.0f, 90.0f);
+    data->transformComponents.rotation[1] = vec3f(0.0f, 315.0f, 270.0f);
+    data->transformComponents.rotation[2] = vec3f(0.0f, 45.0f, 0.0f);
+    data->transformComponents.rotation[3] = vec3f(0.0f, 0.0f, 0.0f);
+
+    data->renderComponents.geometry[0] = 2;
+    data->renderComponents.geometry[1] = 2;
+    data->renderComponents.geometry[2] = 2;
+    data->renderComponents.geometry[3] = 0;
+
+    data->renderComponents.material[0] = 4;
+    data->renderComponents.material[1] = 4;
+    data->renderComponents.material[2] = 4;
+    data->renderComponents.material[3] = 3;
+
+    addEntityLight();
+    addEntityLight();
+    addEntityLight();
+
+    data->transformComponents.position[4] = vec4f(0.5f, -2.0f, 1.5f, 1.0f);
+    data->renderComponents.geometry[4] = 3;
+    data->renderComponents.material[4] = 3;
+    data->lightComponents.target[4] = vec4f(0.0f, 0.0f, 0.0f, 0.0f);
+    data->lightComponents.color[4] = vec4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+    data->transformComponents.position[5] = vec4f(-1.0f, -2.0f, 0.0f, 1.0f);
+    data->renderComponents.geometry[5] = 3;
+    data->renderComponents.material[5] = 3;
+    data->lightComponents.target[5] = vec4f(0.0f, 0.0f, 0.0f, 0.0f);
+    data->lightComponents.color[5] = vec4f(1.0f, 0.0f, 0.0f, 1.0f);
+
+    data->transformComponents.position[6] = vec4f(2.5f, -2.0f, 0.0f, 1.0f);
+    data->renderComponents.geometry[6] = 3;
+    data->renderComponents.material[6] = 3;
+    data->lightComponents.target[6] = vec4f(0.0f, 0.0f, 0.0f, 0.0f);
+    data->lightComponents.color[6] = vec4f(0.0f, 0.0f, 1.0f, 1.0f);
 
     update();
   }

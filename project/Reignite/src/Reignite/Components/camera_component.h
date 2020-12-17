@@ -18,12 +18,6 @@ namespace Reignite {
 
     void setPerspective(float fov, float aspect, float znear, float zfar);
 
-    void rotate(vec3f delta) {
-
-      rotation += delta;
-      updateViewMatrix();
-    }
-
     void update(float deltaTime);
 
     enum Type {
@@ -33,19 +27,18 @@ namespace Reignite {
 
     Type type = Type::RI_CAMERA_TYPE_PERSPECTIVE;
     vec3f position = vec3f();
-    vec3f rotation = vec3f();
+    vec3f direction = vec3f(0.0f, 0.0f, 1.0f);
 
-    mat4f view;
-    mat4f projection;
+    mat4f view = mat4f(1.0f);
+    mat4f projection = mat4f(1.0f);
 
     float fov;
     float Znear;
     float Zfar;
 
     float movementSpeed = 1.0f;
-    float rotationSpeed = 20.0f;
+    float rotationSpeed = 1.0f;
 
-    bool updated = false;
     bool flipY = false;
 
     std::shared_ptr<State> state;

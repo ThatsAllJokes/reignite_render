@@ -20,7 +20,7 @@ namespace Reignite {
     enum Type {
       RI_LIGHT_TYPE_DIRECTIONAL,
       RI_LIGHT_TYPE_POINTLIGHT,
-      RI_LIGHT_TYPE_SPOTLIGHT
+      RI_LIGHT_TYPE_SPOTLIGHT   // Not supported
     };
 
     std::vector<Type> type;

@@ -10,11 +10,6 @@
 #include "state.h"
 #include "consts.h"
 
-#include "Components/transform_component.h"
-#include "Components/render_component.h"
-#include "Components/light_component.h"
-#include "Components/camera_component.h"
-
 
 namespace Reignite {
 
@@ -48,7 +43,7 @@ namespace Reignite {
     data = new Data();
     data->width = 1600;
     data->height = 900;
-    data->title = "Sample text";
+    data->title = "Reignite Render";
     data->window = nullptr;
     data->mousePos = vec2f();
 
@@ -94,6 +89,8 @@ namespace Reignite {
 
     glfwMakeContextCurrent(data->window);
     glfwSetWindowUserPointer(data->window, nullptr);
+
+    RI_INFO("Window created successfuly!");
   }
 
   void Window::shutdown() {

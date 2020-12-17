@@ -15,6 +15,7 @@
 
 #define EXE_PATH 0
 
+
 const std::string Reignite::Tools::GetAssetPath() {
 #if EXE_PATH
   return "./../../../../project/data/";
@@ -95,6 +96,8 @@ bool Reignite::Tools::LoadObjFile(std::string filename, GeometryResource& geomet
     return false;
   }
 
+  bool containsUV = false;
+
   // obj parsing TODO: Implement vertex deduplication
   for(const auto& shape : shapes) {
     for (const auto& index : shape.mesh.indices) {
@@ -112,8 +115,11 @@ bool Reignite::Tools::LoadObjFile(std::string filename, GeometryResource& geomet
       vertex.normal[1] = attrib.normals[3 * index.normal_index + 1];
       vertex.normal[2] = attrib.normals[3 * index.normal_index + 2];
 
-      vertex.texcoord[0] = attrib.texcoords[2 * index.texcoord_index + 0];
-      vertex.texcoord[1] = 1.0f - attrib.texcoords[2 * index.texcoord_index + 1];
+      if (attrib.texcoords.size() != 0) {
+        containsUV = true;
+        vertex.texcoord[0] = attrib.texcoords[2 * index.texcoord_index + 0];
+        vertex.texcoord[1] = 1.0f - attrib.texcoords[2 * index.texcoord_index + 1];
+      }
 
       geometry.vertices.push_back(vertex);
       geometry.indices.push_back((u32)geometry.indices.size());
@@ -122,6 +128,9 @@ bool Reignite::Tools::LoadObjFile(std::string filename, GeometryResource& geomet
 
   geometry.vertexSize = (u32)geometry.vertices.size();
   geometry.indicesSize = (u32)geometry.indices.size();
+
+  if (!containsUV)
+    return true;
 
   // calculate tangents from obj received data
   for (u32 i = 0; i < geometry.indices.size(); i += 3) {

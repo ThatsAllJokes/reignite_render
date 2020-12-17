@@ -17,7 +17,9 @@ void Reignite::Camera::setInputAccess(const std::shared_ptr<State> state) {
 
 void Reignite::Camera::updateViewMatrix() {
 
-  mat4f rotM = glm::mat4(1.0f);
+  view = glm::lookAt(position, position + direction, vec3f(0.0f, 1.0f, 0.0f));
+
+  /*mat4f rotM = glm::mat4(1.0f);
   mat4f transM;
 
   rotM = glm::rotate(rotM, glm::radians(rotation.x * (flipY ? -1.0f : 1.0f)), glm::vec3(1.0f, 0.0f, 0.0f));
@@ -30,9 +32,7 @@ void Reignite::Camera::updateViewMatrix() {
   }
 
   transM = glm::translate(glm::mat4(1.0f), translation);
-  view = rotM * transM;
-
-  updated = true;
+  view = rotM * transM;*/
 }
 
 void Reignite::Camera::setPerspective(float fov, float aspect, float znear, float zfar) {
@@ -48,45 +48,41 @@ void Reignite::Camera::setPerspective(float fov, float aspect, float znear, floa
 
 void Reignite::Camera::update(float deltaTime) {
 
-  updated = false;
-  if (state->input->isKeyDown(87) || state->input->isKeyDown(65) ||
-      state->input->isKeyDown(83) || state->input->isKeyDown(68) ||
-      state->input->isKeyDown(81) || state->input->isKeyDown(69)) {
-
-    glm::vec3 camFront;
-    camFront.x = -cos(glm::radians(rotation.x)) * sin(glm::radians(rotation.y));
-    camFront.y = sin(glm::radians(rotation.x));
-    camFront.z = cos(glm::radians(rotation.x)) * cos(glm::radians(rotation.y));
-    camFront = glm::normalize(camFront);
-
-    float moveSpeed = deltaTime * movementSpeed;
-
-    if(state->input->isKeyDown(87))
-      position += camFront * moveSpeed;
-    else if(state->input->isKeyDown(83))
-      position -= camFront * moveSpeed;
-
-    if(state->input->isKeyDown(65))
-      position -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
-    else if(state->input->isKeyDown(68))
-      position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
-
-    if (state->input->isKeyDown(81))
-      position -= glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 0.0f, 1.0f))) * moveSpeed;
-    else if (state->input->isKeyDown(69))
-      position += glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 0.0f, 1.0f))) * moveSpeed;
-
-    updateViewMatrix();
-  }
-
-  if (state->input->isMouseButtonDown(0) || state->input->isMouseButtonDown(1)) {
-
+  if (state->input->isMouseButtonDown(1)) {
+    
     float rotSpeed = deltaTime * rotationSpeed;
 
-    if (state->input->isMouseButtonDown(0))
-      rotation -= (glm::radians(45.0f) * glm::vec3(0.0f, 1.0f, 0.0f)) * rotSpeed;
-    else if (state->input->isMouseButtonDown(1))
-      rotation += (glm::radians(45.0f) * glm::vec3(0.0f, 1.0f, 0.0f)) * rotSpeed;
+    vec2f mouse = state->window->mousePosition();
+    mouse.x /= state->window->width();
+    mouse.y /= state->window->height();
+
+    direction = vec3f(
+      cos(mouse.x * (2.0f * 3.1415f)),
+      sin(mouse.y * (2.0f * 3.1415f)),
+      sin(mouse.x * (2.0f * 3.1415f)));
+
+    if (state->input->isKeyDown(87) || state->input->isKeyDown(65) ||
+        state->input->isKeyDown(83) || state->input->isKeyDown(68) ||
+        state->input->isKeyDown(81) || state->input->isKeyDown(69)) {
+
+      float moveSpeed = deltaTime * movementSpeed;
+
+      if(state->input->isKeyDown(87))
+        position += direction * moveSpeed;
+      else if(state->input->isKeyDown(83))
+        position -= direction * moveSpeed;
+
+      if(state->input->isKeyDown(65))
+        position -= glm::normalize(glm::cross(direction, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+      else if(state->input->isKeyDown(68))
+        position += glm::normalize(glm::cross(direction, glm::vec3(0.0f, 1.0f, 0.0f))) * moveSpeed;
+
+      if (state->input->isKeyDown(81))
+        position -= glm::normalize(glm::cross(direction, glm::vec3(1.0f, 0.0f, 0.0f))) * moveSpeed;
+      else if (state->input->isKeyDown(69))
+        position += glm::normalize(glm::cross(direction, glm::vec3(1.0f, 0.0f, 0.0f))) * moveSpeed;
+
+    }
 
     updateViewMatrix();
   }

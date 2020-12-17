@@ -1,5 +1,7 @@
 #include "transform_component.h"
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_ENABLE_EXPERIMENTAL
 #include <gtx/transform.hpp>
 
@@ -49,9 +51,9 @@ void Reignite::TransformComponents::update() {
     glm::mat4 mat_transform = glm::translate(glm::mat4(1.0f), position[i]);
     glm::mat4 mat_scale = glm::scale(scale[i]);
 
-    glm::mat4 mat_rotation_x = glm::rotate(rotation[i].x, glm::vec3(1.0f, 0.0f, 0.0f));
-    glm::mat4 mat_rotation_y = glm::rotate(rotation[i].y, glm::vec3(0.0f, 1.0f, 0.0f));
-    glm::mat4 mat_rotation_z = glm::rotate(rotation[i].z, glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 mat_rotation_x = glm::rotate(glm::radians(rotation[i].x), glm::vec3(1.0f, 0.0f, 0.0f));
+    glm::mat4 mat_rotation_y = glm::rotate(glm::radians(rotation[i].y), glm::vec3(0.0f, 1.0f, 0.0f));
+    glm::mat4 mat_rotation_z = glm::rotate(glm::radians(rotation[i].z), glm::vec3(0.0f, 0.0f, 1.0f));
     glm::mat4 mat_rotation = mat_rotation_x * mat_rotation_y * mat_rotation_z;
   
     local[i] = mat_transform * mat_rotation * mat_scale;
