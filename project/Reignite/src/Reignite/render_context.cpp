@@ -940,36 +940,42 @@ namespace Reignite {
 
   void RenderContext::loadResources() {
     
-    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/red_bricks_albedo.png");
-    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/red_bricks_normal.png");
-    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/red_bricks_roughness.png");
-    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/red_bricks_metallic.png");
+    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/bricks_red/red_bricks_albedo.png");
+    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/bricks_red/red_bricks_normal.png");
+    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/bricks_red/red_bricks_roughness.png");
+    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/bricks_red/red_bricks_metallic.png");
     
-    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/iron_rust_albedo.png");
-    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/iron_rust_normal.png");
-    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/iron_rust_roughness.png");
-    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/iron_rust_metallic.png");
+    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/iron_rusted/iron_rust_albedo.png");
+    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/iron_rusted/iron_rust_normal.png");
+    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/iron_rusted/iron_rust_roughness.png");
+    createTextureResource(Reignite::Tools::GetAssetPath() + "textures/iron_rusted/iron_rust_metallic.png");
 
-    std::string filename;
-    VkFormat format;
-    if (data->deviceFeatures.textureCompressionBC) {
-      filename = "textures/cubemap_yokohama_bc3_unorm.ktx";
+    std::string filename[] = {
+      Reignite::Tools::GetAssetPath() + "textures/skybox/back.jpg",
+      Reignite::Tools::GetAssetPath() + "textures/skybox/bottom.jpg",
+      Reignite::Tools::GetAssetPath() + "textures/skybox/front.jpg",
+      Reignite::Tools::GetAssetPath() + "textures/skybox/left.jpg",
+      Reignite::Tools::GetAssetPath() + "textures/skybox/right.jpg",
+      Reignite::Tools::GetAssetPath() + "textures/skybox/top.jpg"
+    };
+    VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+    /*if (data->deviceFeatures.textureCompressionBC) {
+      filename = Reignite::Tools::GetAssetPath() + "textures/cubemap_yokohama_bc3_unorm.ktx";
       format = VK_FORMAT_BC2_UNORM_BLOCK;
     }
     else if (data->deviceFeatures.textureCompressionASTC_LDR) {
-      filename = "textures/cubemap_yokohama_astc_8x8_unorm.ktx";
+      filename = Reignite::Tools::GetAssetPath() + "textures/cubemap_yokohama_astc_8x8_unorm.ktx";
       format = VK_FORMAT_ASTC_8x8_UNORM_BLOCK;
     }
     else if (data->deviceFeatures.textureCompressionETC2) {
-      filename = "textures/cubemap_yokohama_etc2_unorm.ktx";
+      filename = Reignite::Tools::GetAssetPath() + "textures/cubemap_yokohama_etc2_unorm.ktx";
       format = VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK;
     }
     else {
       assert(!"Compressed texture format not supported");
-    }
+    }*/
 
-    data->cubeMap.loadFromFile(Reignite::Tools::GetAssetPath() + filename, 
-      format, data->vulkanState, data->queue);
+    data->cubeMap.loadFromFile(filename, format, data->vulkanState, data->queue);
   }
 
   void Reignite::RenderContext::initialize(const std::shared_ptr<State> s, const RenderContextParams& params) {

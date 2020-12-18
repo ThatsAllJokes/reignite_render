@@ -38,10 +38,10 @@ namespace vk {
   class Texture2D : public Texture {
    public:
 
-    void loadFromFile(std::string file, VkFormat format,
+    /*void loadFromFile(std::string file, VkFormat format,
       VkDevice vkDevice, VkPhysicalDevice vkPhysDevice, VkCommandPool vkCmdPool, VkQueue copyQueue, 
       VkImageUsageFlags imageUsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT, 
-      VkImageLayout imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+      VkImageLayout imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);*/
 
     void loadFromFileSTB(std::string file, VkFormat format,
       VkDevice vkDevice, VkPhysicalDevice vkPhysDevice, VkCommandPool vkCmdPool, VkQueue copyQueue,
@@ -52,7 +52,12 @@ namespace vk {
   class TextureCubeMap : public Texture {
    public:
 
-    void loadFromFile(std::string filename, VkFormat format,
+    /*void loadFromFile(std::string filename, VkFormat format,
+      vk::VulkanState* vulkanState, VkQueue copyQueue,
+      VkImageUsageFlags imageUsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
+      VkImageLayout imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);*/
+
+    void loadFromFile(std::string* filename, VkFormat format,
       vk::VulkanState* vulkanState, VkQueue copyQueue,
       VkImageUsageFlags imageUsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
       VkImageLayout imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
