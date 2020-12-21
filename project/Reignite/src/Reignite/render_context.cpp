@@ -872,8 +872,8 @@ namespace Reignite {
     data->skyboxUboVS.projection = glm::perspective(glm::radians(60.0f), (float)state->window->width() / (float)state->window->height(), 0.001f, 256.0f);
 
     data->skyboxUboVS.model = glm::mat4(1.0f);
-    data->skyboxUboVS.model = viewMatrix * glm::translate(data->skyboxUboVS.model, glm::vec3(0, 0, 0));
-    data->skyboxUboVS.model = glm::rotate(data->skyboxUboVS.model, glm::radians(0.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    data->skyboxUboVS.model = viewMatrix * glm::translate(data->skyboxUboVS.model, glm::vec3(0.0f, 0.0f, 0.0f));
+    data->skyboxUboVS.model = glm::rotate(data->skyboxUboVS.model, glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f)); // Cube map needs to 180d rotated as Vulkan's Y axis has the opposite direction compared to OpenGL
     data->skyboxUboVS.model = glm::rotate(data->skyboxUboVS.model, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     data->skyboxUboVS.model = glm::rotate(data->skyboxUboVS.model, glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
@@ -959,22 +959,6 @@ namespace Reignite {
       Reignite::Tools::GetAssetPath() + "textures/skybox/top.jpg"
     };
     VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
-    /*if (data->deviceFeatures.textureCompressionBC) {
-      filename = Reignite::Tools::GetAssetPath() + "textures/cubemap_yokohama_bc3_unorm.ktx";
-      format = VK_FORMAT_BC2_UNORM_BLOCK;
-    }
-    else if (data->deviceFeatures.textureCompressionASTC_LDR) {
-      filename = Reignite::Tools::GetAssetPath() + "textures/cubemap_yokohama_astc_8x8_unorm.ktx";
-      format = VK_FORMAT_ASTC_8x8_UNORM_BLOCK;
-    }
-    else if (data->deviceFeatures.textureCompressionETC2) {
-      filename = Reignite::Tools::GetAssetPath() + "textures/cubemap_yokohama_etc2_unorm.ktx";
-      format = VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK;
-    }
-    else {
-      assert(!"Compressed texture format not supported");
-    }*/
-
     data->cubeMap.loadFromFile(filename, format, data->vulkanState, data->queue);
   }
 
